@@ -2,6 +2,7 @@
   const app = document.getElementById('app');
   const source = document.body.dataset.source || 'README.md';
   const SITE_ROOT = '/surwave-site/wiki/';
+  const CONTENT_ROOT = '/surwave-site/content/';
   const DATA_URL = '/surwave-site/assets/js/site-data.json';
   const LOGO_URL = '/surwave-site/assets/logos/surwave-wiki-logo.svg';
 
@@ -45,7 +46,7 @@
       return '/.gitbook/assets/'+encodeURIComponent(file);
     }
     const resolved=normalizePath(dirname(source)+raw);
-    return '/'+resolved.split('/').map(encodeURIComponent).join('/');
+    return CONTENT_ROOT+resolved.split('/').map(encodeURIComponent).join('/');
   }
 
   function inline(text) {
@@ -124,5 +125,5 @@
   function buildNavigation(data){const nav=document.getElementById('nav'),current=location.pathname;data.groups.forEach(group=>{const s=document.createElement('section');s.className='nav-group';if(group.items.some(i=>current.endsWith('/'+i.href)))s.classList.add('open');s.innerHTML=`<button class="nav-title" type="button"><span>${group.title}</span><span class="chev">⌄</span></button><div class="nav-items"><div class="nav-items-inner"></div></div>`;const inner=s.querySelector('.nav-items-inner');group.items.forEach(item=>{const a=document.createElement('a');a.className='nav-link';a.href=SITE_ROOT+item.href;a.textContent=item.title;if(current.endsWith('/'+item.href))a.classList.add('active');inner.appendChild(a);});s.querySelector('.nav-title').onclick=()=>s.classList.toggle('open');nav.appendChild(s);});const input=document.getElementById('navSearch');input.oninput=()=>{const q=input.value.trim().toLowerCase();document.querySelectorAll('.nav-link').forEach(a=>a.hidden=!!q&&!a.textContent.toLowerCase().includes(q));if(q)document.querySelectorAll('.nav-group').forEach(x=>x.classList.add('open'));};}
   function bindUi(){document.getElementById('copyLink').onclick=async e=>{await navigator.clipboard.writeText(location.href);const b=e.currentTarget,o=b.textContent;b.textContent='Скопировано';setTimeout(()=>b.textContent=o,1200);};document.getElementById('menuButton').onclick=()=>document.getElementById('sidebar').classList.toggle('open');const box=document.getElementById('lightbox');document.querySelectorAll('.wiki-image').forEach(img=>img.onclick=()=>{box.querySelector('img').src=img.src;box.hidden=false;});box.onclick=e=>{if(e.target===box||e.target.tagName==='BUTTON')box.hidden=true;};document.addEventListener('keydown',e=>{if(e.key==='Escape')box.hidden=true;});}
 
-  Promise.all([fetch('/'+source).then(r=>{if(!r.ok)throw new Error(`${source}: HTTP ${r.status}`);return r.text();}),fetch(DATA_URL).then(r=>r.json())]).then(([md,data])=>{app.innerHTML=shell(renderMarkdown(md));buildNavigation(data);buildToc();bindUi();document.documentElement.classList.add('wiki-ready');}).catch(error=>{app.innerHTML=`<main class="main"><div class="content-grid"><article class="article"><h1>Не удалось открыть страницу</h1><p>${escapeHtml(error.message||error)}</p></article></div></main>`;document.documentElement.classList.add('wiki-ready');});
+  Promise.all([fetch(CONTENT_ROOT+source).then(r=>{if(!r.ok)throw new Error(`${source}: HTTP ${r.status}`);return r.text();}),fetch(DATA_URL).then(r=>r.json())]).then(([md,data])=>{app.innerHTML=shell(renderMarkdown(md));buildNavigation(data);buildToc();bindUi();document.documentElement.classList.add('wiki-ready');}).catch(error=>{app.innerHTML=`<main class="main"><div class="content-grid"><article class="article"><h1>Не удалось открыть страницу</h1><p>${escapeHtml(error.message||error)}</p></article></div></main>`;document.documentElement.classList.add('wiki-ready');});
 })();
