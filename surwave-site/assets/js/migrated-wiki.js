@@ -112,7 +112,7 @@
       m=trimmed.match(/^\d+[.)]\s+(.+)$/);if(m){if(list!=='ol'){closeList();out.push('<ol>');list='ol';}out.push(`<li>${inline(m[1])}</li>`);continue;}
       if(list)closeList();
       m=trimmed.match(/^>\s?(.*)$/);if(m){out.push(`<blockquote>${inline(m[1])}</blockquote>`);continue;}
-      if(/^<[^>]+>/.test(trimmed)){out.push(trimmed);continue;}
+      if(/^<\/?(?:div|iframe|video|source|sup|sub)\b/i.test(trimmed)){out.push(trimmed);continue;}
       out.push(`<p>${inline(trimmed)}</p>`);
     }
     flush(); if(details){if(detailsBody)out.push('</div>');out.push('</details>');}
