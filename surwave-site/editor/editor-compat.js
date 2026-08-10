@@ -30,7 +30,13 @@
   };
 
   function currentKnownPaths() {
-    return new Set(Array.from(document.querySelectorAll('.page-item small'), node => node.textContent.trim()).filter(Boolean));
+    const paths = [];
+    document.querySelectorAll('.page-item small').forEach(node => paths.push(node.textContent.trim()));
+    document.querySelectorAll('.block-body select option').forEach(option => {
+      const value = String(option.value || '').trim();
+      if (/\.md$/i.test(value)) paths.push(value);
+    });
+    return new Set(paths.filter(Boolean));
   }
 
   function makeRelative(from, to) {
