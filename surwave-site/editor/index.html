@@ -4,11 +4,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#060a0c">
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title>Редактор — Surwave Wiki</title>
-  <link rel="stylesheet" href="editor.css">
-  <link rel="stylesheet" href="editor-v2.css">
-  <link rel="stylesheet" href="editor-v2-sizing.css">
-  <link rel="stylesheet" href="editor-v2-cards.css">
+  <link rel="stylesheet" href="editor.css?v=20260810-1740">
+  <link rel="stylesheet" href="editor-v2.css?v=20260810-1740">
+  <link rel="stylesheet" href="editor-v2-sizing.css?v=20260810-1740">
+  <link rel="stylesheet" href="editor-v2-cards.css?v=20260810-1740">
 </head>
 <body>
   <header class="editor-topbar">
@@ -80,13 +83,26 @@
   <input id="mediaPicker" type="file" accept="image/png,image/jpeg,image/gif,image/apng,image/webp,image/svg+xml,video/mp4,video/webm" hidden>
   <div id="toast" class="toast" role="status"></div>
 
-  <script src="editor-v2-core.js"></script>
-  <script src="editor-v2-cards-core.js"></script>
-  <script src="editor-v2-cards-fidelity.js"></script>
-  <script src="editor-v2-sizing.js"></script>
-  <script src="editor-v2-sizing-runtime.js"></script>
-  <script src="editor-v2-compat.js"></script>
-  <script src="editor-v2.js"></script>
-  <script src="editor-v2-cards-ui.js"></script>
+  <script src="editor-v2-core.js?v=20260810-1740"></script>
+  <script src="editor-v2-cards-register.js?v=20260810-1740"></script>
+  <script src="editor-v2-cards-core.js?v=20260810-1740"></script>
+  <script src="editor-v2-cards-fidelity.js?v=20260810-1740"></script>
+  <script src="editor-v2-sizing.js?v=20260810-1740"></script>
+  <script src="editor-v2-sizing-runtime.js?v=20260810-1740"></script>
+  <script src="editor-v2-compat.js?v=20260810-1740"></script>
+  <script src="editor-v2.js?v=20260810-1740"></script>
+  <script src="editor-v2-cards-ui.js?v=20260810-1740"></script>
+  <script>
+    setTimeout(() => {
+      const core = window.SurwaveEditorCoreV2;
+      const loaded = !!core && core.TYPES.some(([type]) => type === 'servercards');
+      if (loaded) return;
+      const toast = document.getElementById('toast');
+      if (!toast) return;
+      toast.textContent = 'Ошибка: модуль «IP-карточки / копирование» не загрузился. Перезапусти START_EDITOR.bat.';
+      toast.classList.add('visible');
+      console.error('Surwave editor: servercards module was not registered.');
+    }, 500);
+  </script>
 </body>
 </html>
