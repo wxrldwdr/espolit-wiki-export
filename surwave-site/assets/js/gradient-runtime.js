@@ -88,13 +88,16 @@
     const style=doc.createElement('style');
     style.id='surwave-gradient-runtime-style';
     style.textContent=`
-      .sw-runtime-border-host{position:relative!important;isolation:isolate!important;overflow:hidden!important;border:0!important;background:transparent!important}
+      .sw-copy-pair .sw-copy-card.sw-runtime-border-host,.sw-link-gradient .link-group.sw-runtime-border-host{position:relative!important;isolation:isolate!important;overflow:hidden!important;border:0!important;background:transparent!important}
+      .sw-copy-pair .sw-copy-card.sw-runtime-border-host::before,.sw-link-gradient .link-group.sw-runtime-border-host::before{content:none!important;display:none!important;animation:none!important;background:none!important}
       .sw-runtime-border-layer,.sw-runtime-inner-layer{position:absolute;pointer-events:none;display:block}
       .sw-runtime-border-layer{z-index:0;inset:0;border-radius:inherit;background-repeat:no-repeat;background-position:50% 50%;background-size:260% 260%;will-change:transform,background-position,opacity,filter}
-      .sw-runtime-inner-layer{z-index:1;inset:3px;border-radius:calc(1em - 3px);background:#050809;transition:background-color .18s ease}
-      .sw-runtime-border-host>.sw-runtime-content,.sw-runtime-border-host>*:not(.sw-runtime-border-layer):not(.sw-runtime-inner-layer){position:relative;z-index:2}
+      .sw-runtime-inner-layer{z-index:1;inset:3px;border-radius:12px;background:#050809;transition:background-color .18s ease}
+      .sw-runtime-border-host>*:not(.sw-runtime-border-layer):not(.sw-runtime-inner-layer){position:relative;z-index:2}
       .sw-copy-card.sw-runtime-border-host{border-radius:16px!important}
+      .sw-copy-card.sw-runtime-border-host>.sw-runtime-inner-layer{border-radius:13px}
       .sw-link-gradient .link-group.sw-runtime-border-host{border-radius:12px!important}
+      .sw-link-gradient .link-group.sw-runtime-border-host>.sw-runtime-inner-layer{border-radius:9px}
       .sw-runtime-text{background-size:260% 260%!important;background-position:50% 50%;-webkit-background-clip:text!important;background-clip:text!important;-webkit-text-fill-color:transparent!important;color:transparent!important;will-change:background-position,opacity,filter}
     `;
     (doc.head||doc.documentElement).appendChild(style);
@@ -106,11 +109,11 @@
   }
 
   function animationFrames(kind,isText=false){
-    if(kind==='pulse')return {frames:[{opacity:.5,filter:'brightness(.82)'},{opacity:1,filter:'brightness(1.25)'},{opacity:.5,filter:'brightness(.82)'}],easing:'ease-in-out'};
+    if(kind==='pulse')return {frames:[{opacity:.48,filter:'brightness(.8)'},{opacity:1,filter:'brightness(1.28)'},{opacity:.48,filter:'brightness(.8)'}],easing:'ease-in-out'};
     if(kind==='flow'||(kind==='orbit'&&isText))return {frames:[{backgroundPosition:'0% 50%'},{backgroundPosition:'100% 50%'},{backgroundPosition:'0% 50%'}],easing:'linear'};
-    if(kind==='shimmer')return {frames:[{backgroundPosition:'180% 50%',filter:'brightness(.75)'},{backgroundPosition:'45% 50%',filter:'brightness(1.4)'},{backgroundPosition:'-80% 50%',filter:'brightness(.75)'}],easing:'ease-in-out'};
-    if(kind==='wave')return {frames:[{backgroundPosition:'0% 20%',opacity:.62},{backgroundPosition:'70% 0%',opacity:1},{backgroundPosition:'100% 80%',opacity:.72},{backgroundPosition:'30% 100%',opacity:1},{backgroundPosition:'0% 20%',opacity:.62}],easing:'ease-in-out'};
-    if(kind==='glow')return {frames:[{opacity:.52,filter:'brightness(.86)'},{opacity:1,filter:'brightness(1.3)'},{opacity:.52,filter:'brightness(.86)'}],easing:'ease-in-out'};
+    if(kind==='shimmer')return {frames:[{backgroundPosition:'180% 50%',filter:'brightness(.72)'},{backgroundPosition:'45% 50%',filter:'brightness(1.45)'},{backgroundPosition:'-80% 50%',filter:'brightness(.72)'}],easing:'ease-in-out'};
+    if(kind==='wave')return {frames:[{backgroundPosition:'0% 20%',opacity:.58},{backgroundPosition:'70% 0%',opacity:1},{backgroundPosition:'100% 80%',opacity:.68},{backgroundPosition:'30% 100%',opacity:1},{backgroundPosition:'0% 20%',opacity:.58}],easing:'ease-in-out'};
+    if(kind==='glow')return {frames:[{opacity:.5,filter:'brightness(.82)'},{opacity:1,filter:'brightness(1.35)'},{opacity:.5,filter:'brightness(.82)'}],easing:'ease-in-out'};
     if(kind==='orbit'&&!isText)return {frames:[{transform:'rotate(0deg) scale(1.55)'},{transform:'rotate(360deg) scale(1.55)'}],easing:'linear'};
     return null;
   }
@@ -136,6 +139,9 @@
 
   function ensureBorderLayers(target){
     target.classList.add('sw-runtime-border-host');
+    target.style.setProperty('background','transparent','important');
+    target.style.setProperty('border','0','important');
+    target.style.setProperty('overflow','hidden','important');
     let border=[...target.children].find(x=>x.classList?.contains('sw-runtime-border-layer'));
     let inner=[...target.children].find(x=>x.classList?.contains('sw-runtime-inner-layer'));
     if(!border){border=target.ownerDocument.createElement('span');border.className='sw-runtime-border-layer';target.prepend(border);}
@@ -171,10 +177,9 @@
     if(target.dataset.swGradientRuntime==='1')return;
     target.dataset.swGradientRuntime='1';
     const layers=ensureBorderLayers(target);
-    let current='normal',copiedUntil=0,copiedTimer=null;
+    let copiedUntil=0,copiedTimer=null;
 
     function apply(name){
-      current=name;
       const borderState=config.gradientStates.border[name]||config.gradientStates.border.normal;
       const textState=config.gradientStates.text[name]||config.gradientStates.text.normal;
       layers.border.hidden=!config.borderGradient;
@@ -187,7 +192,7 @@
         if(borderState.animation==='glow'&&typeof target.animate==='function'){
           target._swGlowAnimation=target.animate([
             {boxShadow:'0 8px 22px rgba(0,0,0,.25),0 0 0 rgba(0,255,120,0)'},
-            {boxShadow:'0 10px 28px rgba(0,0,0,.30),0 0 24px rgba(0,255,192,.24)'},
+            {boxShadow:'0 10px 28px rgba(0,0,0,.30),0 0 28px rgba(0,255,192,.28)'},
             {boxShadow:'0 8px 22px rgba(0,0,0,.25),0 0 0 rgba(0,255,120,0)'}
           ],{duration:borderState.speed*1000,iterations:Infinity,easing:'ease-in-out'});
         }
