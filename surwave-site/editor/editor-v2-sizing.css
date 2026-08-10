@@ -1,0 +1,18 @@
+/* Precise sizing controls for Surwave Editor */
+.sw-size-controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 12px;margin:0 0 14px;padding:12px;border:1px solid #26373c;border-radius:10px;background:#071013}
+.sw-size-title{grid-column:1/-1;color:#dce9e4;font-size:12px;font-weight:800;letter-spacing:.02em}
+.sw-size-field{display:flex;flex-direction:column;gap:5px;min-width:0;color:#879b94;font-size:11.5px}
+.sw-size-field>.field,.sw-size-field>.sw-inline-control,.sw-size-field>.sw-scale-row{width:100%}
+.sw-inline-control,.sw-scale-row{display:flex;align-items:center;gap:6px;min-width:0}
+.sw-inline-control .sw-number{min-width:0;flex:1}
+.sw-unit{width:68px!important;flex:0 0 68px}
+.sw-number{height:34px;min-width:70px}
+.sw-scale-row input[type=range]{min-width:80px;flex:1;accent-color:#00ff78}
+.sw-scale-row .sw-number{width:76px;flex:0 0 76px}
+.sw-unit-label{color:#6f847c;font-size:12px}
+.sw-image-mini-preview{grid-column:1/-1;position:relative;display:grid;place-items:center;min-height:120px;max-height:260px;overflow:hidden;border:1px dashed #2a3c41;border-radius:9px;background:#050b0d;color:#657a72;font-size:12px}
+.sw-image-mini-preview img{display:block;max-width:100%;max-height:240px;transform-origin:center center;transition:transform .12s ease;object-fit:contain}
+.sw-font-px{display:inline-flex;align-items:center;gap:4px;height:30px;padding:0 6px;border:1px solid #243338;border-radius:7px;background:#071013;color:#82968f;font-size:11px}
+.sw-font-px .sw-number{width:55px;height:26px;padding:2px 4px;border:0;background:transparent;color:#dce8e4;text-align:right;outline:none}
+.sw-font-px .sw-number::-webkit-inner-spin-button{opacity:.6}
+@media(max-width:760px){.sw-size-controls{grid-template-columns:1fr}.sw-size-title,.sw-image-mini-preview{grid-column:1}}
