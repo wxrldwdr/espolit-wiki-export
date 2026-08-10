@@ -198,7 +198,15 @@ def unique_media_name(name: str) -> str:
 
 
 class WikiHandler(SimpleHTTPRequestHandler):
-    server_version = "SurwaveWiki/1.0"
+    server_version = "SurwaveWiki/1.1"
+
+    def end_headers(self) -> None:
+        parsed = urlparse(self.path)
+        if parsed.path.startswith("/surwave-site/editor/"):
+            self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+            self.send_header("Pragma", "no-cache")
+            self.send_header("Expires", "0")
+        super().end_headers()
 
     def send_json(self, payload: object, status: int = 200) -> None:
         raw = json.dumps(payload, ensure_ascii=False).encode("utf-8")
