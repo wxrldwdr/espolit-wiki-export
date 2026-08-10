@@ -6,6 +6,7 @@
   <meta name="theme-color" content="#060a0c">
   <title>Редактор — Surwave Wiki</title>
   <link rel="stylesheet" href="editor.css">
+  <link rel="stylesheet" href="editor-v2.css">
 </head>
 <body>
   <header class="editor-topbar">
@@ -56,7 +57,7 @@
         <div class="composer-head">
           <div>
             <h1>Содержимое</h1>
-            <p>Перетаскивай блоки или используй стрелки. Вложенные блоки поддерживаются.</p>
+            <p>Клик по блоку предпросмотра переносит к соответствующему блоку редактора.</p>
           </div>
           <div id="mainAddBar"></div>
         </div>
@@ -67,7 +68,7 @@
 
     <aside class="preview-panel" id="previewPanel">
       <div class="preview-head">
-        <span>Живой предпросмотр</span>
+        <span>Живой предпросмотр · кликни по блоку для перехода</span>
         <span id="saveState" class="save-state">Готово</span>
       </div>
       <iframe id="preview" title="Предпросмотр страницы"></iframe>
@@ -77,9 +78,7 @@
   <input id="mediaPicker" type="file" accept="image/png,image/jpeg,image/gif,image/apng,image/webp,image/svg+xml,video/mp4,video/webm" hidden>
   <div id="toast" class="toast" role="status"></div>
 
-  <script src="editor-core.js"></script>
-  <script src="editor-compat.js"></script>
-  <script src="editor-mentions.js"></script>
-  <script src="editor.js"></script>
+  <script src="editor-v2-core.js"></script>
+  <script src="editor-v2.js"></script>
 </body>
 </html>
