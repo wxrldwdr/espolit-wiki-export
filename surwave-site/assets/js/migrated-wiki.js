@@ -1,129 +1,41 @@
 (() => {
-  const app = document.getElementById('app');
-  const source = document.body.dataset.source || 'README.md';
-  const SITE_ROOT = '/surwave-site/wiki/';
-  const CONTENT_ROOT = '/surwave-site/content/';
-  const DATA_URL = '/surwave-site/assets/js/site-data.json';
-  const LOGO_URL = '/surwave-site/assets/logos/surwave-wiki-logo.svg';
-
-  const escapeHtml = value => String(value).replace(/[&<>\"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c]));
-  const slugify = value => value.replace(/<[^>]+>/g,'').replace(/&[^;]+;/g,'').trim().toLowerCase().replace(/[^a-zа-яё0-9]+/gi,'-').replace(/^-+|-+$/g,'') || 'section';
-
-  function applyBrand(text) {
-    return text.replaceAll('ESPOLIT','Surwave').replaceAll('Espolit','Surwave');
-  }
-
-  function normalizePath(path) {
-    const parts=[];
-    for (const segment of path.split('/')) {
-      if (!segment || segment==='.') continue;
-      if (segment==='..') parts.pop(); else parts.push(segment);
-    }
-    return parts.join('/');
-  }
-
-  function dirname(path) {
-    const i=path.lastIndexOf('/');
-    return i===-1 ? '' : path.slice(0,i+1);
-  }
-
-  function internalHref(target) {
-    if (!target) return '#';
-    if (/^(https?:|mailto:|tel:|#)/i.test(target)) return target;
-    const h=target.indexOf('#');
-    const raw=h>=0 ? target.slice(0,h) : target;
-    const hash=h>=0 ? target.slice(h) : '';
-    if (!raw) return hash || '#';
-    const resolved=normalizePath(dirname(source)+raw);
-    const out=resolved.replace(/README\.md$/i,'index.html').replace(/\.md$/i,'.html');
-    return SITE_ROOT+out+hash;
-  }
-
-  function mediaHref(raw) {
-    if (/^https?:/i.test(raw)) return raw;
-    if (raw.includes('.gitbook/assets/')) {
-      const file=raw.split('.gitbook/assets/').pop().split('/').pop();
-      return '/.gitbook/assets/'+encodeURIComponent(file);
-    }
-    const resolved=normalizePath(dirname(source)+raw);
-    return CONTENT_ROOT+resolved.split('/').map(encodeURIComponent).join('/');
-  }
-
-  function inline(text) {
-    return text
-      .replace(/\\_/g,'_')
-      .replace(/\\\[/g,'[').replace(/\\\]/g,']')
-      .replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')
-      .replace(/(?<!\*)\*(?!\*)(.*?)\*/g,'<em>$1</em>')
-      .replace(/`([^`]+)`/g,'<code>$1</code>')
-      .replace(/\[([^\]]+)\]\(([^ )]+)(?:\s+\"[^\"]*\")?\)/g,(_,label,url)=>{
-        const href=internalHref(url); const ext=/^(https?:|mailto:|tel:)/i.test(href);
-        return `<a href="${href}"${ext?' target="_blank" rel="noopener"':''}>${label}</a>`;
-      });
-  }
-
-  function preprocess(md) {
-    md=md.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/,'');
-    md=applyBrand(md).replace(/&#x20;/g,' ');
-    md=md.replace(/<mark style="color:\$primary;">([\s\S]*?)<\/mark>/g,'<mark>$1</mark>');
-    md=md.replace(/<mark style="color:[^"]+;">([\s\S]*?)<\/mark>/g,'<mark>$1</mark>');
-    md=md.replace(/<figure><img src="([^"]+)" alt="([^"]*)"><figcaption>([\s\S]*?)<\/figcaption><\/figure>/g,(_,src,alt,caption)=>`\n@@FIGURE@@${src}@@ALT@@${alt}@@CAPTION@@${caption}@@END@@\n`);
-    md=md.replace(/\{% content-ref url="([^"]+)" %\}[\s\S]*?\{% endcontent-ref %\}/g,(_,url)=>`\n@@CONTENTREF@@${url}@@END@@\n`);
-    md=md.replace(/\{% embed url="([^"]+)" %\}([\s\S]*?)\{% endembed %\}/g,(_,url,body)=>`\n@@EMBED@@${url}@@BODY@@${body.trim()}@@END@@\n`);
-    md=md.replace(/\{% embed url="([^"]+)" %\}/g,(_,url)=>`\n@@EMBED@@${url}@@BODY@@@@END@@\n`);
-    md=md.replace(/\{% hint style="([^"]+)" %\}/g,'\n@@HINTSTART@@$1@@END@@\n').replace(/\{% endhint %\}/g,'\n@@HINTEND@@\n');
-    md=md.replace(/\{% stepper %\}/g,'\n@@STEPPERSTART@@\n').replace(/\{% endstepper %\}/g,'\n@@STEPPEREND@@\n').replace(/\{% step %\}/g,'\n@@STEPSTART@@\n').replace(/\{% endstep %\}/g,'\n@@STEPEND@@\n');
-    return md;
-  }
-
-  function renderMarkdown(markdown) {
-    const lines=preprocess(markdown).split(/\r?\n/), out=[];
-    let list=null, details=false, detailsBody=false, table=false;
-    const closeList=()=>{ if(list){out.push(`</${list}>`); list=null;} };
-    const closeTable=()=>{ if(table){out.push('</tbody></table></div>'); table=false;} };
-    const flush=()=>{closeList();closeTable();};
-
-    for(let i=0;i<lines.length;i++){
-      const trimmed=lines[i].trim();
-      if(!trimmed){flush();continue;}
-      if(trimmed.startsWith('@@FIGURE@@')){
-        flush(); const m=trimmed.match(/^@@FIGURE@@(.*?)@@ALT@@(.*?)@@CAPTION@@(.*?)@@END@@$/);
-        if(m) out.push(`<figure><img class="wiki-image" loading="lazy" src="${mediaHref(m[1])}" alt="${escapeHtml(m[2])}">${m[3]?`<figcaption>${inline(m[3])}</figcaption>`:''}</figure>`);
-        continue;
-      }
-      if(trimmed.startsWith('@@CONTENTREF@@')){flush();const url=trimmed.slice(14,-7);out.push(`<a class="content-ref" href="${internalHref(url)}"><span>Открыть раздел</span><b>→</b></a>`);continue;}
-      if(trimmed.startsWith('@@EMBED@@')){flush();const m=trimmed.match(/^@@EMBED@@(.*?)@@BODY@@(.*?)@@END@@$/);if(m)out.push(`<div class="embed-card"><a href="${m[1]}" target="_blank" rel="noopener">${escapeHtml(m[1])}</a>${m[2]?`<div>${inline(m[2])}</div>`:''}</div>`);continue;}
-      if(trimmed.startsWith('@@HINTSTART@@')){flush();const kind=trimmed.slice(13,-7);out.push(`<div class="hint ${kind}">`);continue;}
-      if(trimmed==='@@HINTEND@@'){flush();out.push('</div>');continue;}
-      if(trimmed==='@@STEPPERSTART@@'){flush();out.push('<div class="stepper">');continue;}
-      if(trimmed==='@@STEPPEREND@@'){flush();out.push('</div>');continue;}
-      if(trimmed==='@@STEPSTART@@'){flush();out.push('<div class="step">');continue;}
-      if(trimmed==='@@STEPEND@@'){flush();out.push('</div>');continue;}
-      if(trimmed==='<details>'){flush();out.push('<details>');details=true;detailsBody=false;continue;}
-      if(trimmed==='</details>'){flush();if(detailsBody)out.push('</div>');out.push('</details>');details=false;detailsBody=false;continue;}
-      const sm=trimmed.match(/^<summary>([\s\S]*)<\/summary>$/);if(sm){flush();out.push(`<summary>${inline(sm[1])}</summary><div class="details-body">`);detailsBody=true;continue;}
-      const hm=trimmed.match(/^(#{1,6})\s+(.+)$/);if(hm){flush();const n=hm[1].length,id=slugify(hm[2]);out.push(`<h${n} id="${id}">${inline(hm[2])}<a class="anchor" href="#${id}">#</a></h${n}>`);continue;}
-      if(/^\*{3,}$/.test(trimmed)){flush();out.push('<hr>');continue;}
-      const next=(lines[i+1]||'').trim();
-      if(trimmed.includes('|')&&/^\|?\s*:?-{3,}/.test(next)){flush();const cells=trimmed.replace(/^\||\|$/g,'').split('|').map(x=>x.trim());out.push('<div class="table-wrap"><table><thead><tr>'+cells.map(c=>`<th>${inline(c)}</th>`).join('')+'</tr></thead><tbody>');table=true;i++;continue;}
-      if(table&&trimmed.includes('|')){const cells=trimmed.replace(/^\||\|$/g,'').split('|').map(x=>x.trim());out.push('<tr>'+cells.map(c=>`<td>${inline(c)}</td>`).join('')+'</tr>');continue;}
-      if(table)closeTable();
-      let m=trimmed.match(/^[-*]\s+(.+)$/);if(m){if(list!=='ul'){closeList();out.push('<ul>');list='ul';}out.push(`<li>${inline(m[1])}</li>`);continue;}
-      m=trimmed.match(/^\d+[.)]\s+(.+)$/);if(m){if(list!=='ol'){closeList();out.push('<ol>');list='ol';}out.push(`<li>${inline(m[1])}</li>`);continue;}
-      if(list)closeList();
-      m=trimmed.match(/^>\s?(.*)$/);if(m){out.push(`<blockquote>${inline(m[1])}</blockquote>`);continue;}
-      if(/^<\/?(?:div|iframe|video|source|sup|sub)\b/i.test(trimmed)){out.push(trimmed);continue;}
-      out.push(`<p>${inline(trimmed)}</p>`);
-    }
-    flush(); if(details){if(detailsBody)out.push('</div>');out.push('</details>');}
-    return out.join('\n');
-  }
-
-  function shell(content){return `<aside class="sidebar" id="sidebar"><a class="brand" href="${SITE_ROOT}index.html"><img src="${LOGO_URL}" alt="Surwave Wiki"></a><a class="home-link active" href="${SITE_ROOT}index.html"><span>Добро пожаловать</span><span>›</span></a><nav id="nav"></nav></aside><header class="topbar"><button class="menu-button" id="menuButton">☰</button><div class="search"><input id="navSearch" type="search" placeholder="Поиск по разделам…"></div><button class="copy-link" id="copyLink">Копировать ссылку</button></header><main class="main"><div class="content-grid"><article class="article">${content}</article><aside class="toc" id="toc"><strong>На этой странице</strong></aside></div></main><div class="lightbox" id="lightbox" hidden><button>×</button><img alt=""></div>`;}
-
-  function buildToc(){const toc=document.getElementById('toc');document.querySelectorAll('.article h2,.article h3').forEach(h=>{const a=document.createElement('a');a.href='#'+h.id;a.textContent=h.textContent.replace(/#$/,'').trim();if(h.tagName==='H3')a.classList.add('toc-sub');toc.appendChild(a);});}
-  function buildNavigation(data){const nav=document.getElementById('nav'),current=location.pathname;data.groups.forEach(group=>{const s=document.createElement('section');s.className='nav-group';if(group.items.some(i=>current.endsWith('/'+i.href)))s.classList.add('open');s.innerHTML=`<button class="nav-title" type="button"><span>${group.title}</span><span class="chev">⌄</span></button><div class="nav-items"><div class="nav-items-inner"></div></div>`;const inner=s.querySelector('.nav-items-inner');group.items.forEach(item=>{const a=document.createElement('a');a.className='nav-link';a.href=SITE_ROOT+item.href;a.textContent=item.title;if(current.endsWith('/'+item.href))a.classList.add('active');inner.appendChild(a);});s.querySelector('.nav-title').onclick=()=>s.classList.toggle('open');nav.appendChild(s);});const input=document.getElementById('navSearch');input.oninput=()=>{const q=input.value.trim().toLowerCase();document.querySelectorAll('.nav-link').forEach(a=>a.hidden=!!q&&!a.textContent.toLowerCase().includes(q));if(q)document.querySelectorAll('.nav-group').forEach(x=>x.classList.add('open'));};}
-  function bindUi(){document.getElementById('copyLink').onclick=async e=>{await navigator.clipboard.writeText(location.href);const b=e.currentTarget,o=b.textContent;b.textContent='Скопировано';setTimeout(()=>b.textContent=o,1200);};document.getElementById('menuButton').onclick=()=>document.getElementById('sidebar').classList.toggle('open');const box=document.getElementById('lightbox');document.querySelectorAll('.wiki-image').forEach(img=>img.onclick=()=>{box.querySelector('img').src=img.src;box.hidden=false;});box.onclick=e=>{if(e.target===box||e.target.tagName==='BUTTON')box.hidden=true;};document.addEventListener('keydown',e=>{if(e.key==='Escape')box.hidden=true;});}
-
-  Promise.all([fetch(CONTENT_ROOT+source).then(r=>{if(!r.ok)throw new Error(`${source}: HTTP ${r.status}`);return r.text();}),fetch(DATA_URL).then(r=>r.json())]).then(([md,data])=>{app.innerHTML=shell(renderMarkdown(md));buildNavigation(data);buildToc();bindUi();document.documentElement.classList.add('wiki-ready');}).catch(error=>{app.innerHTML=`<main class="main"><div class="content-grid"><article class="article"><h1>Не удалось открыть страницу</h1><p>${escapeHtml(error.message||error)}</p></article></div></main>`;document.documentElement.classList.add('wiki-ready');});
+  const app=document.getElementById('app'),source=document.body.dataset.source||'README.md';
+  const SITE='/surwave-site/wiki/',CONTENT='/surwave-site/content/',DATA='/surwave-site/assets/js/site-data.json',LOGO='/surwave-site/assets/logos/surwave-wiki-logo.svg';
+  const css=document.createElement('link');css.rel='stylesheet';css.href='/surwave-site/assets/css/site-v2.css';document.head.appendChild(css);
+  const esc=v=>String(v??'').replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c]));
+  const strip=v=>{const d=document.createElement('div');d.innerHTML=String(v??'');return(d.textContent||'').trim()};
+  const slug=v=>strip(v).toLowerCase().replace(/[^a-zа-яё0-9]+/gi,'-').replace(/^-+|-+$/g,'')||'section';
+  const dir=p=>p.includes('/')?p.slice(0,p.lastIndexOf('/')+1):'';
+  const norm=p=>{const a=[];for(const s of p.split('/')){if(!s||s==='.')continue;if(s==='..')a.pop();else a.push(s)}return a.join('/')};
+  function href(raw){if(!raw)return'#';if(/^(https?:|mailto:|tel:|#|\/surwave-site\/wiki\/)/i.test(raw))return raw;const at=raw.indexOf('#'),p=at>=0?raw.slice(0,at):raw,hash=at>=0?raw.slice(at):'';if(!p)return hash||'#';const r=norm(dir(source)+p);return SITE+r.replace(/README\.md$/i,'index.html').replace(/\.md$/i,'.html')+hash}
+  function media(raw){if(!raw)return'';if(/^https?:|^data:/i.test(raw))return raw;if(raw.includes('.gitbook/assets/'))return '/.gitbook/assets/'+encodeURIComponent(raw.split('.gitbook/assets/').pop().split('/').pop());return CONTENT+norm(dir(source)+raw).split('/').map(encodeURIComponent).join('/')}
+  function inline(s){let x=String(s??'').replace(/&#x20;/g,' ').replace(/\\_/g,'_');x=x.replace(/<mark style="color:([^\"]+);">([\s\S]*?)<\/mark>/g,(_,c,b)=>`<span class="text-color" style="color:${esc(c==='$primary'?'#00ff78':c)}">${b}</span>`);x=x.replace(/<span style="font-size:([^\"]+);">([\s\S]*?)<\/span>/g,(_,z,b)=>`<span style="font-size:${esc(z)}">${b}</span>`);x=x.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/(?<!\*)\*(?!\*)(.*?)\*/g,'<em>$1</em>').replace(/~~(.*?)~~/g,'<s>$1</s>').replace(/`([^`]+)`/g,'<code>$1</code>');x=x.replace(/\[([^\]]+)\]\(([^ )]+)(?:\s+"([^"]*)")?\)/g,(_,label,url,title)=>`<a href="${esc(href(url))}"${/^https?:/i.test(url)?' target="_blank" rel="noopener"':''}>${label}${title==='mention'?'<span class="mention-external">↗</span>':''}</a>`);return x}
+  function special(l){const t=(l||'').trim();return !t||/^#{1,6}\s/.test(t)||/^\*{3,}$/.test(t)||/^[-*]\s+/.test(t)||/^\d+[.)]\s+/.test(t)||/^>/.test(t)||/^```/.test(t)||t==='<details>'||/^\{% (hint|stepper|embed|content-ref|link-group)/.test(t)||/^<figure>/.test(t)||/^<(p|h[1-6]|blockquote|ul|ol)\b/i.test(t)}
+  function parse(lines,start=0,stop=()=>false,ctx={}){const out=[];let i=start;while(i<lines.length){const raw=lines[i],t=raw.trim();if(stop(t))break;if(!t){i++;continue}let m=t.match(/^\{% hint style="([^"]+)"(?: color="([^"]+)")? %\}$/);if(m){const p=parse(lines,i+1,x=>x==='{% endhint %}',ctx),color=m[2]||({info:'#4ea1ff',warning:'#ffd400',success:'#00ff78',danger:'#ff5c6c'}[m[1]]||'#4ea1ff');out.push(`<div class="hint ${esc(m[1])}" style="--hint-color:${esc(color)}">${p.html}</div>`);i=p.index+(lines[p.index]?.trim()==='{% endhint %}'?1:0);continue}
+      if(t==='{% stepper %}'){const steps=[];i++;while(i<lines.length&&lines[i].trim()!=='{% endstepper %}'){if(!lines[i].trim()){i++;continue}if(lines[i].trim()==='{% step %}'){const p=parse(lines,i+1,x=>x==='{% endstep %}',ctx);steps.push(`<div class="step">${p.html}</div>`);i=p.index+(lines[p.index]?.trim()==='{% endstep %}'?1:0)}else i++}if(lines[i]?.trim()==='{% endstepper %}')i++;out.push(`<div class="stepper">${steps.join('')}</div>`);continue}
+      if(t==='{% link-group %}'){const items=[];i++;while(i<lines.length&&lines[i].trim()!=='{% endlink-group %}'){const lm=lines[i].trim().match(/^\{% link title="([^"]*)" url="([^"]*)"(?: image="([^"]*)")? %\}$/);if(lm){const desc=[];i++;while(i<lines.length&&lines[i].trim()!=='{% endlink %}'){desc.push(lines[i]);i++}if(lines[i]?.trim()==='{% endlink %}')i++;items.push({title:lm[1],url:lm[2],image:lm[3]||'',desc:inline(desc.join(' ').trim())})}else i++}if(lines[i]?.trim()==='{% endlink-group %}')i++;out.push(`<div class="link-group">${items.map(it=>`<a class="link-item" href="${esc(href(it.url))}"${/^https?:/i.test(it.url)?' target="_blank" rel="noopener"':''}>${it.image?`<img src="${media(it.image)}" alt="">`:''}<span class="link-copy"><strong>${esc(it.title)}</strong>${it.desc?`<small>${it.desc}</small>`:''}</span><span class="link-arrow">›</span></a>`).join('')}</div>`);continue}
+      if(t==='<details>'){i++;while(i<lines.length&&!lines[i].trim())i++;let summary='Подробнее';const sm=lines[i]?.trim().match(/^<summary>([\s\S]*?)<\/summary>$/i);if(sm){summary=inline(sm[1]);i++}const p=parse(lines,i,x=>x==='</details>',{...ctx,inDetails:true});out.push(`<details><summary>${summary}</summary><div class="details-body">${p.html}</div></details>`);i=p.index+(lines[p.index]?.trim()==='</details>'?1:0);continue}
+      m=t.match(/^<h4\s+align="center">([\s\S]*?)<\/h4>$/i);if(ctx.inDetails&&m){let j=i+1;while(j<lines.length&&!lines[j].trim())j++;const pm=lines[j]?.trim().match(/^<p\s+align="center">([\s\S]*?)<\/p>$/i);if(pm){let name=m[1].replace(/^(?:<strong>)?[—–-]{4,}(?:<\/strong>)?<br>/i,'');out.push(`<div class="brewery-recipe"><h4>${inline(name)}</h4><div class="brewery-body">${inline(pm[1])}</div></div>`);i=j+1;continue}}
+      m=t.match(/^<figure><img src="([^"]+)" alt="([^"]*)"\s*\/?>(?:<figcaption>([\s\S]*?)<\/figcaption>)?<\/figure>$/i);if(m){out.push(`<figure class="wiki-figure"><img class="wiki-image" loading="lazy" src="${media(m[1])}" alt="${esc(m[2])}">${m[3]?`<figcaption>${inline(m[3])}</figcaption>`:''}</figure>`);i++;continue}
+      m=t.match(/^\{% content-ref url="([^"]+)" %\}$/);if(m){let label='Открыть раздел';i++;while(i<lines.length&&lines[i].trim()!=='{% endcontent-ref %}'){const lm=lines[i].match(/\[([^\]]+)\]\(/);if(lm)label=strip(lm[1]);i++}if(lines[i]?.trim()==='{% endcontent-ref %}')i++;out.push(`<div class="link-group"><a class="link-item" href="${esc(href(m[1]))}"><span class="link-copy"><strong>${esc(label)}</strong></span><span class="link-arrow">›</span></a></div>`);continue}
+      m=t.match(/^\{% embed url="([^"]+)" %\}$/);if(m){const url=m[1],body=[];i++;while(i<lines.length&&lines[i].trim()!=='{% endembed %}'){body.push(lines[i]);i++}if(lines[i]?.trim()==='{% endembed %}')i++;let title='',image='',desc=body.join(' ').trim();const tm=desc.match(/^<strong>([\s\S]*?)<\/strong><br>/i);if(tm){title=tm[1];desc=desc.slice(tm[0].length)}const im=desc.match(/<figure><img src="([^"]+)"[^>]*><\/figure>/i);if(im){image=im[1];desc=desc.replace(im[0],'')}let host='';try{host=new URL(url).hostname}catch(_){host=url}out.push(`<a class="embed-preview" href="${esc(url)}" target="_blank" rel="noopener">${image?`<img class="embed-image" src="${media(image)}" alt="">`:''}<span class="embed-copy"><small>${esc(host)}</small><strong>${inline(title||host||'Внешний ресурс')}</strong>${desc?`<span>${inline(desc)}</span>`:''}</span><span class="embed-open">↗</span></a>`);continue}
+      const mm=t.match(/^(.*?)\[([^\]]+)\]\(([^ )]+)\s+"mention"\)\s*$/);if(mm){out.push(`<div class="mention-block">${mm[1].trim()?`<span class="mention-prefix">${inline(mm[1].trim())}</span>`:''}<a href="${esc(href(mm[3]))}">${inline(mm[2])}<span>↗</span></a></div>`);i++;continue}
+      m=t.match(/^<(h[1-6])(?:\s+align="(left|center|right)")?>([\s\S]*?)<\/\1>$/i);if(m){const n=+m[1].slice(1),id=slug(m[3]);out.push(`<h${n} id="${id}" style="text-align:${m[2]||'left'}">${inline(m[3])}<a class="anchor" href="#${id}">#</a></h${n}>`);i++;continue}
+      m=t.match(/^<p(?:\s+align="(left|center|right)")?>([\s\S]*?)<\/p>$/i);if(m){out.push(`<p style="text-align:${m[1]||'left'}">${inline(m[2])}</p>`);i++;continue}
+      m=t.match(/^(#{1,6})\s+(.+)$/);if(m){const n=m[1].length,id=slug(m[2]);out.push(`<h${n} id="${id}">${inline(m[2])}<a class="anchor" href="#${id}">#</a></h${n}>`);i++;continue}
+      if(/^\*{3,}$/.test(t)){out.push('<hr>');i++;continue}
+      if(/^```/.test(t)){const code=[];i++;while(i<lines.length&&!/^```/.test(lines[i].trim())){code.push(lines[i]);i++}if(i<lines.length)i++;out.push(`<pre><code>${esc(code.join('\n'))}</code></pre>`);continue}
+      if(/^[-*]\s+/.test(t)){const a=[];while(i<lines.length){const lm=lines[i].trim().match(/^[-*]\s+(.+)$/);if(!lm)break;a.push(`<li>${inline(lm[1])}</li>`);i++}out.push(`<ul>${a.join('')}</ul>`);continue}
+      if(/^\d+[.)]\s+/.test(t)){const a=[];while(i<lines.length){const lm=lines[i].trim().match(/^\d+[.)]\s+(.+)$/);if(!lm)break;a.push(`<li>${inline(lm[1])}</li>`);i++}out.push(`<ol>${a.join('')}</ol>`);continue}
+      if(/^>\s?/.test(t)){const a=[];while(i<lines.length){const q=lines[i].trim().match(/^>\s?(.*)$/);if(!q)break;a.push(q[1]);i++}out.push(`<blockquote>${inline(a.join('<br>'))}</blockquote>`);continue}
+      if(/^<(ul|ol)>/i.test(t)||/^<blockquote>/i.test(t)){out.push(t);i++;continue}
+      if(t.includes('|')&&/^\|?\s*:?-{3,}/.test((lines[i+1]||'').trim())){const split=r=>r.trim().replace(/^\||\|$/g,'').split('|').map(c=>c.trim()),head=split(lines[i]);i+=2;const rows=[];while(i<lines.length&&lines[i].includes('|')&&lines[i].trim()){rows.push(split(lines[i]));i++}out.push(`<div class="table-wrap"><table><thead><tr>${head.map(c=>`<th>${inline(c)}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${inline(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`);continue}
+      if(/^<[^>]+>/.test(t)){out.push(t);i++;continue}
+      const a=[t];i++;while(i<lines.length&&!special(lines[i])&&!stop(lines[i].trim())){a.push(lines[i].trim());i++}out.push(`<p>${inline(a.filter(Boolean).join('<br>'))}</p>`)
+    }return{html:out.join('\n'),index:i}}
+  function render(md){md=md.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/,'').replaceAll('ESPOLIT','Surwave').replaceAll('Espolit','Surwave');return parse(md.split(/\r?\n/)).html}
+  function shell(content){return `<aside class="sidebar" id="sidebar"><a class="brand" href="${SITE}index.html"><img src="${LOGO}" alt="Surwave Wiki"></a><a class="home-link active" href="${SITE}index.html"><span>Добро пожаловать</span><span>›</span></a><nav id="nav"></nav></aside><header class="topbar"><button class="mobile-menu" id="menuButton">☰</button><div class="search"><input id="navSearch" type="search" placeholder="Поиск по разделам…"></div><button class="copy-link" id="copyLink">Копировать ссылку</button></header><main class="main"><div class="content-grid"><article class="article">${content}</article><aside class="toc" id="toc"><strong>На этой странице</strong></aside></div></main><div class="lightbox" id="lightbox" hidden><button>×</button><img alt=""></div>`}
+  function nav(data){const root=document.getElementById('nav'),cur=location.pathname;for(const g of data.groups||[]){const s=document.createElement('section');s.className='nav-group'+(g.items?.some(i=>cur.endsWith('/'+i.href))?' open':'');s.innerHTML=`<button class="nav-title"><span>${esc(g.title)}</span><span>⌄</span></button><div class="nav-items"><div class="nav-items-inner"></div></div>`;const inner=s.querySelector('.nav-items-inner');for(const i of g.items||[]){const a=document.createElement('a');a.className='nav-link'+(cur.endsWith('/'+i.href)?' active':'');a.href=SITE+i.href;a.textContent=i.title;inner.append(a)}s.querySelector('button').onclick=()=>s.classList.toggle('open');root.append(s)}const q=document.getElementById('navSearch');q.oninput=()=>{const v=q.value.toLowerCase();document.querySelectorAll('.nav-link').forEach(a=>a.hidden=!!v&&!a.textContent.toLowerCase().includes(v));if(v)document.querySelectorAll('.nav-group').forEach(g=>g.classList.add('open'))}}
+  function bind(){const toc=document.getElementById('toc');document.querySelectorAll('.article h2,.article h3').forEach(h=>{const a=document.createElement('a');a.href='#'+h.id;a.textContent=h.textContent.replace(/#$/,'').trim();if(h.tagName==='H3')a.className='toc-sub';toc.append(a)});document.getElementById('copyLink').onclick=()=>navigator.clipboard.writeText(location.href);document.getElementById('menuButton').onclick=()=>document.getElementById('sidebar').classList.toggle('open');const lb=document.getElementById('lightbox');document.querySelectorAll('.wiki-image').forEach(img=>img.onclick=()=>{lb.querySelector('img').src=img.src;lb.hidden=false});lb.onclick=e=>{if(e.target===lb||e.target.tagName==='BUTTON')lb.hidden=true}}
+  Promise.all([fetch(CONTENT+source).then(r=>{if(!r.ok)throw Error(`${source}: HTTP ${r.status}`);return r.text()}),fetch(DATA).then(r=>r.json())]).then(([md,data])=>{app.innerHTML=shell(render(md));nav(data);bind();document.documentElement.classList.add('wiki-ready')}).catch(e=>{app.innerHTML=`<main class="main"><article class="article"><h1>Ошибка загрузки</h1><p>${esc(e.message)}</p></article></main>`})
 })();
