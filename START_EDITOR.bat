@@ -3,6 +3,9 @@ setlocal EnableExtensions
 cd /d "%~dp0"
 title Surwave Wiki Editor
 
+if not exist "surwave-site\serve_migrated.py" goto :missing_files
+if not exist "surwave-site\editor\index.html" goto :missing_files
+
 set "PYTHON_CMD="
 
 where py >nul 2>nul
@@ -33,21 +36,38 @@ echo [Surwave Wiki Editor]
 echo Python: %PYTHON_CMD%
 echo Project: %CD%
 echo.
+echo Starting editor...
+echo.
 
 %PYTHON_CMD% surwave-site\serve_migrated.py --editor
 set "EXIT_CODE=%ERRORLEVEL%"
 
-if not "%EXIT_CODE%"=="0" (
-  echo.
-  echo ============================================================
+echo.
+echo ============================================================
+if "%EXIT_CODE%"=="0" (
+  echo Surwave Wiki Editor server stopped.
+) else (
   echo Surwave Wiki Editor failed to start.
   echo Exit code: %EXIT_CODE%
   echo Copy the error shown above if you need help.
-  echo ============================================================
-  echo.
-  pause
 )
+echo ============================================================
+echo.
+pause
 exit /b %EXIT_CODE%
+
+:missing_files
+echo.
+echo ============================================================
+echo Project files are missing.
+echo Make sure the ZIP was fully extracted before starting.
+echo Required:
+echo   surwave-site\serve_migrated.py
+echo   surwave-site\editor\index.html
+echo ============================================================
+echo.
+pause
+exit /b 2
 
 :no_python
 echo.
