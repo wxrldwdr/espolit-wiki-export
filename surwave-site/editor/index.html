@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#060a0c">
+  <title>Редактор — Surwave Wiki</title>
+  <link rel="stylesheet" href="editor.css">
+</head>
+<body>
+  <header class="editor-topbar">
+    <a class="editor-brand" href="/surwave-site/wiki/index.html" target="_blank" rel="noopener">
+      <img src="/surwave-site/assets/logos/surwave-wiki-logo.svg" alt="Surwave Wiki">
+      <span>Редактор</span>
+    </a>
+    <div class="top-actions">
+      <button id="newPage" class="btn">Новая страница</button>
+      <button id="duplicatePage" class="btn">Дублировать</button>
+      <button id="savePage" class="btn primary">Сохранить</button>
+      <button id="downloadMd" class="btn">Скачать .md</button>
+      <button id="downloadHtml" class="btn">Автономный HTML</button>
+      <button id="openWiki" class="btn">Открыть страницу ↗</button>
+      <button id="deletePage" class="btn danger">Удалить</button>
+    </div>
+  </header>
+
+  <div class="editor-shell">
+    <aside class="library-panel">
+      <div class="panel-title">Страницы</div>
+      <input id="pageSearch" class="field" type="search" placeholder="Поиск страницы…" autocomplete="off">
+      <div id="pageList" class="page-list"></div>
+    </aside>
+
+    <main class="workspace">
+      <section class="page-meta card">
+        <div class="meta-row title-row">
+          <label>Название страницы
+            <input id="pageTitle" class="field" type="text" placeholder="Название">
+          </label>
+          <label>Раздел
+            <select id="pageGroup" class="field"></select>
+          </label>
+          <label>Файл страницы
+            <input id="pagePath" class="field mono" type="text" placeholder="pages/nazvanie.md">
+          </label>
+        </div>
+        <div class="meta-help">Файл задаёт адрес страницы. Например <code>obshee/fermy.md</code> → <code>/wiki/obshee/fermy.html</code>.</div>
+      </section>
+
+      <div class="mobile-tabs">
+        <button class="active" data-view="blocks">Редактор</button>
+        <button data-view="preview">Предпросмотр</button>
+      </div>
+
+      <section class="composer card" id="composerPanel">
+        <div class="composer-head">
+          <div>
+            <h1>Содержимое</h1>
+            <p>Перетаскивай блоки или используй стрелки. Вложенные блоки поддерживаются.</p>
+          </div>
+          <div id="mainAddBar"></div>
+        </div>
+        <div id="blocks" class="blocks"></div>
+        <div id="bottomAddBar"></div>
+      </section>
+    </main>
+
+    <aside class="preview-panel" id="previewPanel">
+      <div class="preview-head">
+        <span>Живой предпросмотр</span>
+        <span id="saveState" class="save-state">Готово</span>
+      </div>
+      <iframe id="preview" title="Предпросмотр страницы"></iframe>
+    </aside>
+  </div>
+
+  <input id="mediaPicker" type="file" accept="image/png,image/jpeg,image/gif,image/apng,image/webp,image/svg+xml,video/mp4,video/webm" hidden>
+  <div id="toast" class="toast" role="status"></div>
+
+  <script src="editor.js"></script>
+</body>
+</html>
