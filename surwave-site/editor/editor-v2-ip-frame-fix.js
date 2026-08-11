@@ -1,14 +1,7 @@
 (() => {
-  const Core=window.SurwaveEditorCoreV2;
-  if(!Core)return;
-  Core.previewCss += `
-  .sw-copy-pair.sw-border-gradient .sw-copy-card,.sw-copy-pair.sw-adv-border .sw-copy-card{position:relative!important;isolation:isolate!important;overflow:hidden!important;border:0!important;background:transparent!important}
-  .sw-copy-pair.sw-border-gradient .sw-copy-card::before,.sw-copy-pair.sw-adv-border .sw-copy-card::before{content:""!important;display:block!important;position:absolute!important;z-index:0!important;inset:-58%!important;pointer-events:none!important;border-radius:28px!important;background-image:var(--sw-b-grad,linear-gradient(90deg,rgba(0,255,120,.28) 0%,rgba(0,255,192,.96) 50%,rgba(0,255,120,.28) 100%))!important;background-repeat:repeat!important;background-size:260% 260%!important;background-position:50% 50%;transform-origin:center center!important;animation-name:var(--sw-b-anim,none)!important;animation-duration:var(--sw-b-speed,2.4s)!important;animation-timing-function:linear!important;animation-iteration-count:infinite!important;animation-fill-mode:both!important;will-change:transform,background-position,opacity,filter!important}
-  .sw-copy-pair.sw-border-gradient .sw-copy-card::after,.sw-copy-pair.sw-adv-border .sw-copy-card::after{content:""!important;display:block!important;position:absolute!important;z-index:1!important;inset:3px!important;pointer-events:none!important;border-radius:13px!important;background:#050809!important;transition:background-color .18s ease!important}
-  .sw-copy-pair.sw-border-gradient .sw-copy-card:hover::after,.sw-copy-pair.sw-adv-border .sw-copy-card:hover::after{background:#07100d!important}
-  .sw-copy-pair.sw-border-gradient .sw-copy-card:active::after,.sw-copy-pair.sw-border-gradient .sw-copy-card.is-copied::after,.sw-copy-pair.sw-adv-border .sw-copy-card:active::after,.sw-copy-pair.sw-adv-border .sw-copy-card.is-copied::after{background:#08130f!important}
-  .sw-copy-pair.sw-border-gradient .sw-copy-card>*:not(.sw-runtime-border-layer):not(.sw-runtime-inner-layer),.sw-copy-pair.sw-adv-border .sw-copy-card>*:not(.sw-runtime-border-layer):not(.sw-runtime-inner-layer){position:relative!important;z-index:2!important}
-  .sw-copy-pair .sw-runtime-border-layer,.sw-copy-pair .sw-runtime-inner-layer{display:none!important}
+  const Core=window.SurwaveEditorCoreV2;if(!Core)return;
+  Core.previewCss+=`
+  .sw-copy-pair.sw-border-gradient .sw-copy-card:not(.sw-runtime-border-host),.sw-copy-pair.sw-adv-border .sw-copy-card:not(.sw-runtime-border-host){border:3px solid transparent!important;background:linear-gradient(#050809,#050809) padding-box,var(--sw-b-grad,linear-gradient(90deg,rgba(0,255,120,.28),rgba(0,255,192,.96) 50%,rgba(0,255,120,.28))) border-box!important}
   a[href="#copy"]{color:inherit!important;cursor:pointer!important;text-decoration:underline dotted rgba(0,255,192,.45)!important;text-underline-offset:3px;border-radius:4px;transition:background-color .15s ease,text-decoration-color .15s ease}
   a[href="#copy"]:hover{background:rgba(0,255,120,.055);text-decoration-color:#00ffc0!important}
   a[href="#copy"]::after{content:" ⧉";display:inline;color:#00ffc0;font-size:.78em;font-weight:700;text-decoration:none!important;vertical-align:.08em;opacity:.9}
