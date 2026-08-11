@@ -83,7 +83,8 @@ def wrapper_html(title: str, source: str) -> str:
         '<link rel="stylesheet" href="/surwave-site/assets/css/site.css"></head>'
         f'<body data-source="{esc_source}"><div id="app"></div>'
         '<script src="/surwave-site/assets/js/migrated-wiki.js"></script>'
-        '<script src="/surwave-site/assets/js/site-ui-runtime.js?v=20260811-1905"></script>'
+        '<script src="/surwave-site/assets/js/gradient-runtime.js?v=20260811-1933"></script>'
+        '<script src="/surwave-site/assets/js/site-ui-runtime.js?v=20260811-1933"></script>'
         '</body></html>'
     )
 
@@ -260,11 +261,15 @@ def regenerate_wrappers() -> None:
 
 
 class WikiHandler(SimpleHTTPRequestHandler):
-    server_version = "SurwaveWiki/1.2"
+    server_version = "SurwaveWiki/1.3"
 
     def end_headers(self) -> None:
         parsed = urlparse(self.path)
-        if parsed.path.startswith("/surwave-site/editor/"):
+        if parsed.path.startswith("/surwave-site/editor/") or parsed.path in {
+            "/surwave-site/assets/js/gradient-runtime.js",
+            "/surwave-site/assets/js/site-ui-runtime.js",
+            "/surwave-site/assets/js/site-settings.json",
+        }:
             self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
             self.send_header("Pragma", "no-cache")
             self.send_header("Expires", "0")
