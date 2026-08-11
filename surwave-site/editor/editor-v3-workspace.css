@@ -1,0 +1,30 @@
+/* Editor-only workspace controls. */
+.block-card,.block-body,.field,.rich-editor,.sw-size-controls,.sw-advanced-gradient-editor{user-select:text}
+.drag-handle{cursor:grab!important;user-select:none!important;-webkit-user-drag:element}
+.drag-handle:active{cursor:grabbing!important}
+.panel-resizer{position:fixed;z-index:46;top:var(--top);bottom:0;width:8px;cursor:col-resize;background:transparent;touch-action:none}
+.panel-resizer::after{content:"";position:absolute;top:0;bottom:0;left:3px;width:2px;background:transparent;transition:background .15s ease}
+.panel-resizer:hover::after,.panel-resizer.is-dragging::after{background:rgba(0,255,120,.42)}
+.panel-resizer.left{left:calc(var(--left) - 4px)}
+.panel-resizer.right{right:calc(var(--right) - 4px)}
+.editor-global-settings{margin:0 0 14px;border:1px solid var(--line);border-radius:13px;background:#081013;overflow:hidden}
+.editor-global-settings>summary{cursor:pointer;padding:12px 14px;font-weight:800;color:#dfece7;background:#0a1316;user-select:none}
+.editor-global-settings-body{display:grid;gap:16px;padding:14px}
+.editor-settings-section{display:grid;gap:10px;padding:12px;border:1px solid #1a2b30;border-radius:10px;background:#071013}
+.editor-settings-section h3{margin:0;color:#00ffc0;font-size:13px}
+.editor-settings-grid{display:grid;grid-template-columns:repeat(4,minmax(110px,1fr));gap:9px}
+.editor-settings-grid label{display:grid;gap:5px;color:#7f938c;font-size:11px}
+.editor-logo-row{display:grid;grid-template-columns:210px 1fr;gap:14px;align-items:start}
+.editor-logo-preview{height:92px;display:grid;place-items:center;overflow:visible;border:1px solid #1a2b30;border-radius:10px;background:#05090b;position:relative}
+.editor-logo-preview img{max-width:none;object-fit:contain}
+.pixel-pad{display:grid;grid-template-columns:36px 36px 36px;grid-template-rows:32px 32px 32px;justify-content:start;gap:3px}
+.pixel-pad button{border:1px solid var(--line);border-radius:6px;background:#0a1316;color:#aabbb5;cursor:pointer}.pixel-pad button:hover{color:#00ff78;border-color:rgba(0,255,120,.3)}
+.pixel-pad .up{grid-column:2;grid-row:1}.pixel-pad .left{grid-column:1;grid-row:2}.pixel-pad .reset{grid-column:2;grid-row:2}.pixel-pad .right{grid-column:3;grid-row:2}.pixel-pad .down{grid-column:2;grid-row:3}
+.settings-actions{display:flex;gap:7px;flex-wrap:wrap}.settings-note{color:#60756d;font-size:11px}
+.page-group-title{display:flex;align-items:center;gap:5px}.page-group-title .rename-group{margin-left:auto;width:24px;height:22px;border:0;border-radius:5px;background:transparent;color:#587069;cursor:pointer}.page-group-title .rename-group:hover{color:#00ff78;background:rgba(0,255,120,.07)}
+.rich-toolbar .copy-text-toggle{font-weight:800;color:#00ffc0}
+.rich-editor a[href="#copy"]{color:inherit!important;text-decoration:underline dotted rgba(0,255,192,.5)!important;text-underline-offset:3px;cursor:pointer}
+.rich-editor a[href="#copy"]::after{content:" ⧉";color:#00ffc0;font-size:.78em}
+@media(max-width:1320px){.editor-settings-grid{grid-template-columns:repeat(2,minmax(120px,1fr))}}
+@media(max-width:980px){.panel-resizer{display:none}.editor-logo-row{grid-template-columns:1fr}.editor-settings-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:720px){.editor-settings-grid{grid-template-columns:1fr}}
