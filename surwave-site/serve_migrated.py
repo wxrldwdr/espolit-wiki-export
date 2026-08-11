@@ -17,10 +17,20 @@ SITE = ROOT / "surwave-site"
 CONTENT = SITE / "content"
 WIKI = SITE / "wiki"
 DATA_FILE = SITE / "assets" / "js" / "site-data.json"
+SETTINGS_FILE = SITE / "assets" / "js" / "site-settings.json"
 MEDIA = ROOT / ".gitbook" / "assets"
 WIKI_PATH = "/surwave-site/wiki/index.html"
 EDITOR_PATH = "/surwave-site/editor/index.html"
 MAX_BODY = 64 * 1024 * 1024
+DEFAULT_SETTINGS = {
+    "logo": {
+        "src": "/surwave-site/assets/logos/surwave-wiki-logo.svg",
+        "width": 226,
+        "height": 58,
+        "x": 0,
+        "y": 0,
+    }
+}
 
 
 def find_port(start: int = 8080, end: int = 8099) -> int:
@@ -72,7 +82,9 @@ def wrapper_html(title: str, source: str) -> str:
         f'<title>{esc_title} — Surwave Wiki</title>'
         '<link rel="stylesheet" href="/surwave-site/assets/css/site.css"></head>'
         f'<body data-source="{esc_source}"><div id="app"></div>'
-        '<script src="/surwave-site/assets/js/migrated-wiki.js"></script></body></html>'
+        '<script src="/surwave-site/assets/js/migrated-wiki.js"></script>'
+        '<script src="/surwave-site/assets/js/site-ui-runtime.js?v=20260811-1905"></script>'
+        '</body></html>'
     )
 
 
@@ -119,7 +131,6 @@ def page_inventory() -> list[dict]:
                     "order": order,
                 }
                 order += 1
-
     pages = list(known.values())
     if CONTENT.exists():
         for file in sorted(CONTENT.rglob("*.md")):
@@ -154,12 +165,10 @@ def upsert_nav(source: str, title: str, group_title: str) -> None:
                 break
         if found_item:
             break
-
     target = next((g for g in groups if g.get("title") == group_title), None)
     if target is None:
         target = {"title": group_title or "Разделы", "items": []}
         groups.append(target)
-
     if found_item is None:
         found_item = {"title": title, "href": page_href(source), "source": source}
         target.setdefault("items", []).append(found_item)
@@ -170,7 +179,6 @@ def upsert_nav(source: str, title: str, group_title: str) -> None:
         if old_group is not target:
             old_group.get("items", []).remove(found_item)
             target.setdefault("items", []).append(found_item)
-
     data["groups"] = [g for g in groups if g.get("items") or g is target]
     save_nav(data)
 
@@ -197,8 +205,62 @@ def unique_media_name(name: str) -> str:
     return candidate
 
 
+def clamp_number(value: object, minimum: int, maximum: int, fallback: int) -> int:
+    try:
+        number = int(float(value))
+    except (TypeError, ValueError):
+        return fallback
+    return max(minimum, min(maximum, number))
+
+
+def load_settings() -> dict:
+    try:
+        data = json.loads(SETTINGS_FILE.read_text(encoding="utf-8"))
+        if isinstance(data, dict):
+            logo = data.get("logo") if isinstance(data.get("logo"), dict) else {}
+            return {
+                "logo": {
+                    "src": str(logo.get("src") or DEFAULT_SETTINGS["logo"]["src"]),
+                    "width": clamp_number(logo.get("width"), 16, 2000, 226),
+                    "height": clamp_number(logo.get("height"), 16, 1000, 58),
+                    "x": clamp_number(logo.get("x"), -2000, 2000, 0),
+                    "y": clamp_number(logo.get("y"), -2000, 2000, 0),
+                }
+            }
+    except (OSError, json.JSONDecodeError):
+        pass
+    return json.loads(json.dumps(DEFAULT_SETTINGS))
+
+
+def save_settings(data: dict) -> dict:
+    logo = data.get("logo") if isinstance(data.get("logo"), dict) else {}
+    clean = {
+        "logo": {
+            "src": str(logo.get("src") or DEFAULT_SETTINGS["logo"]["src"]).strip() or DEFAULT_SETTINGS["logo"]["src"],
+            "width": clamp_number(logo.get("width"), 16, 2000, 226),
+            "height": clamp_number(logo.get("height"), 16, 1000, 58),
+            "x": clamp_number(logo.get("x"), -2000, 2000, 0),
+            "y": clamp_number(logo.get("y"), -2000, 2000, 0),
+        }
+    }
+    SETTINGS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    SETTINGS_FILE.write_text(json.dumps(clean, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    return clean
+
+
+def regenerate_wrappers() -> None:
+    WIKI.mkdir(parents=True, exist_ok=True)
+    for page in page_inventory():
+        source = str(page.get("path") or "")
+        if not source:
+            continue
+        wrapper = wrapper_path(source)
+        wrapper.parent.mkdir(parents=True, exist_ok=True)
+        wrapper.write_text(wrapper_html(str(page.get("title") or "Surwave Wiki"), source), encoding="utf-8")
+
+
 class WikiHandler(SimpleHTTPRequestHandler):
-    server_version = "SurwaveWiki/1.1"
+    server_version = "SurwaveWiki/1.2"
 
     def end_headers(self) -> None:
         parsed = urlparse(self.path)
@@ -221,8 +283,7 @@ class WikiHandler(SimpleHTTPRequestHandler):
         length = int(self.headers.get("Content-Length") or "0")
         if length <= 0 or length > MAX_BODY:
             raise ValueError("Некорректный размер запроса")
-        raw = self.rfile.read(length)
-        data = json.loads(raw.decode("utf-8"))
+        data = json.loads(self.rfile.read(length).decode("utf-8"))
         if not isinstance(data, dict):
             raise ValueError("Ожидался JSON-объект")
         return data
@@ -244,6 +305,9 @@ class WikiHandler(SimpleHTTPRequestHandler):
             except (ValueError, OSError) as exc:
                 self.send_json({"error": str(exc)}, 400)
             return
+        if parsed.path == "/api/editor/site-settings":
+            self.send_json(load_settings())
+            return
         super().do_GET()
 
     def do_POST(self) -> None:
@@ -264,7 +328,6 @@ class WikiHandler(SimpleHTTPRequestHandler):
                 upsert_nav(source, title, group)
                 self.send_json({"ok": True, "href": "/surwave-site/wiki/" + page_href(source)})
                 return
-
             if parsed.path == "/api/editor/delete":
                 source = str(data.get("path") or "")
                 file = content_path(source)
@@ -276,7 +339,6 @@ class WikiHandler(SimpleHTTPRequestHandler):
                 delete_nav(source)
                 self.send_json({"ok": True})
                 return
-
             if parsed.path == "/api/editor/upload":
                 name = unique_media_name(str(data.get("name") or "media.png"))
                 encoded = str(data.get("data") or "")
@@ -289,7 +351,11 @@ class WikiHandler(SimpleHTTPRequestHandler):
                 (MEDIA / name).write_bytes(raw)
                 self.send_json({"ok": True, "name": name, "source": ".gitbook/assets/" + name, "url": "/.gitbook/assets/" + name})
                 return
-
+            if parsed.path == "/api/editor/site-settings":
+                clean = save_settings(data)
+                regenerate_wrappers()
+                self.send_json(clean)
+                return
             self.send_json({"error": "Неизвестный API-метод"}, 404)
         except (ValueError, OSError, json.JSONDecodeError, base64.binascii.Error) as exc:
             self.send_json({"error": str(exc)}, 400)
@@ -297,6 +363,8 @@ class WikiHandler(SimpleHTTPRequestHandler):
 
 def main() -> None:
     os.chdir(ROOT)
+    save_settings(load_settings())
+    regenerate_wrappers()
     port = find_port()
     editor_mode = "--editor" in sys.argv
     start_path = EDITOR_PATH if editor_mode else WIKI_PATH
