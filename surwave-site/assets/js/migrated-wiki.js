@@ -2,7 +2,7 @@
   const app=document.getElementById('app'),source=document.body.dataset.source||'README.md';
   const SITE='/surwave-site/wiki/',CONTENT='/surwave-site/content/',DATA='/surwave-site/assets/js/site-data.json',LOGO='/surwave-site/assets/logos/surwave-wiki-logo.svg';
   const css=document.createElement('link');css.rel='stylesheet';css.href='/surwave-site/assets/css/site-v2.css';document.head.appendChild(css);
-  const gradientScript=document.createElement('script');gradientScript.src='/surwave-site/assets/js/gradient-runtime.js?v=20260810-1935';gradientScript.defer=true;document.head.appendChild(gradientScript);
+  const gradientScript=document.createElement('script');gradientScript.src='/surwave-site/assets/js/gradient-runtime.js?v=20260811-1933';gradientScript.defer=true;document.head.appendChild(gradientScript);
   const esc=v=>String(v??'').replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c]));
   const strip=v=>{const d=document.createElement('div');d.innerHTML=String(v??'');return(d.textContent||'').trim()};
   const slug=v=>strip(v).toLowerCase().replace(/[^a-zа-яё0-9]+/gi,'-').replace(/^-+|-+$/g,'')||'section';
