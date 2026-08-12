@@ -124,13 +124,18 @@
   }
 
   function decorate(){
-    ensureToolbar();ensureGroupTitles();reorderDom();
+    ensureToolbar();ensureGroupTitles();
     pageList.querySelectorAll('.page-item').forEach(bindPage);
     pageList.querySelectorAll('.page-group-title').forEach(bindGroup);
   }
 
   async function refresh(reorder=false){
-    try{inventory=await api('/api/editor/pages');(inventory.groups||[]).forEach(ensureGroupOption);if(reorder)reorderDom();decorate()}catch(e){notify('Ошибка списка страниц: '+e.message,4500)}
+    try{
+      inventory=await api('/api/editor/pages');
+      (inventory.groups||[]).forEach(ensureGroupOption);
+      if(reorder)reorderDom();
+      decorate();
+    }catch(e){notify('Ошибка списка страниц: '+e.message,4500)}
   }
   function queueRefresh(){
     if(refreshQueued)return;refreshQueued=true;
