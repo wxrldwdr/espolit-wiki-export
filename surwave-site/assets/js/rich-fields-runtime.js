@@ -20,7 +20,7 @@
     try{return JSON.parse(decodeURIComponent(match[1]))}catch(_){return null}
   }
   function apply(){
-    scheduled=0;if(!meta)return;
+    scheduled=0;if(!meta||applied)return;
     const article=document.querySelector('.article');if(!article)return;
     const figures=[...article.querySelectorAll('figure.wiki-figure')];
     (meta.images||[]).forEach((html,i)=>{
@@ -45,11 +45,12 @@
       serverPairs[pi]?.querySelectorAll('.sw-copy-title').forEach((title,i)=>{if(titles?.[i]!=null)title.innerHTML=sanitize(titles[i])});
     });
     applied=true;
+    observer.disconnect();
   }
-  function schedule(){if(scheduled)return;scheduled=requestAnimationFrame(apply)}
+  function schedule(){if(scheduled||applied)return;scheduled=requestAnimationFrame(apply)}
 
   fetch(contentUrl,{cache:'no-store'}).then(r=>r.ok?r.text():'').then(text=>{meta=decode(text);schedule()}).catch(()=>{});
-  const observer=new MutationObserver(()=>{if(!applied||meta)schedule()});
+  const observer=new MutationObserver(()=>{if(!applied)schedule()});
   observer.observe(document.documentElement,{childList:true,subtree:true});
   [0,100,250,600,1200].forEach(ms=>setTimeout(schedule,ms));
 })();
