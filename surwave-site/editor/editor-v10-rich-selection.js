@@ -50,24 +50,41 @@
     if (editor) remember(editor);
   }
 
+  function setSavedSelection(editor, node) {
+    const range = document.createRange();
+    range.selectNodeContents(node);
+    savedRanges.set(editor, range.cloneRange());
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+  }
+
   function applyStyle(editor, property, value) {
     const restored = restore(editor);
     if (!restored || restored.collapsed) return false;
-    const range = restored.cloneRange();
+
     try {
+      if (
+        restored.startContainer === restored.endContainer &&
+        restored.startContainer.nodeType === Node.ELEMENT_NODE &&
+        restored.startOffset === 0 &&
+        restored.endOffset === restored.startContainer.childNodes.length &&
+        restored.startContainer !== editor &&
+        restored.startContainer.tagName === 'SPAN'
+      ) {
+        restored.startContainer.style.setProperty(property, value);
+        setSavedSelection(editor, restored.startContainer);
+        editor.dispatchEvent(new Event('input', {bubbles:true}));
+        return true;
+      }
+
+      const range = restored.cloneRange();
       const fragment = range.extractContents();
       const span = document.createElement('span');
       span.style.setProperty(property, value);
       span.appendChild(fragment);
       range.insertNode(span);
-
-      const selectionRange = document.createRange();
-      selectionRange.selectNodeContents(span);
-      savedRanges.set(editor, selectionRange.cloneRange());
-      const selection = window.getSelection();
-      selection.removeAllRanges();
-      selection.addRange(selectionRange);
-
+      setSavedSelection(editor, span);
       editor.dispatchEvent(new Event('input', {bubbles:true}));
       return true;
     } catch (error) {
