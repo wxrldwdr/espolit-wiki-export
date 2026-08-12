@@ -83,8 +83,9 @@ def wrapper_html(title: str, source: str) -> str:
         '<link rel="stylesheet" href="/surwave-site/assets/css/site.css"></head>'
         f'<body data-source="{esc_source}"><div id="app"></div>'
         '<script src="/surwave-site/assets/js/migrated-wiki.js"></script>'
-        '<script src="/surwave-site/assets/js/gradient-runtime.js?v=20260812-1612"></script>'
-        '<script src="/surwave-site/assets/js/site-ui-runtime.js?v=20260812-1612"></script>'
+        '<script src="/surwave-site/assets/js/gradient-runtime.js?v=20260812-1740"></script>'
+        '<script src="/surwave-site/assets/js/site-ui-runtime.js?v=20260812-1740"></script>'
+        '<script src="/surwave-site/assets/js/site-archive-runtime.js?v=20260812-1740"></script>'
         '</body></html>'
     )
 
@@ -104,6 +105,31 @@ def save_nav(data: dict) -> None:
     DATA_FILE.write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
 
 
+def public_nav() -> dict:
+    source = load_nav()
+    home_archived = False
+    public_groups: list[dict] = []
+    for group in source.get("groups", []):
+        group_archived = bool(group.get("archived", False))
+        items: list[dict] = []
+        for item in group.get("items", []):
+            item_source = str(item.get("source") or "")
+            item_archived = bool(item.get("archived", False))
+            if item_source == "README.md":
+                home_archived = item_archived or group_archived
+                continue
+            if group_archived or item_archived:
+                continue
+            items.append({k: v for k, v in item.items() if k != "archived"})
+        if group_archived or not items:
+            continue
+        public_groups.append({
+            "title": str(group.get("title") or "Разделы"),
+            "items": items,
+        })
+    return {"groups": public_groups, "homeArchived": home_archived}
+
+
 def first_title(text: str, fallback: str) -> str:
     text = re.sub(r"^---\r?\n[\s\S]*?\r?\n---\r?\n", "", text, count=1)
     match = re.search(r"^#\s+(.+?)\s*$", text, re.M)
@@ -121,6 +147,7 @@ def page_inventory() -> list[dict]:
     order = 0
     for group in nav.get("groups", []):
         group_title = str(group.get("title") or "Разделы")
+        group_archived = bool(group.get("archived", False))
         for item in group.get("items", []):
             source = str(item.get("source") or "")
             if source:
@@ -129,6 +156,8 @@ def page_inventory() -> list[dict]:
                     "title": str(item.get("title") or Path(source).stem),
                     "group": group_title,
                     "href": str(item.get("href") or page_href(source)),
+                    "archived": bool(item.get("archived", False)),
+                    "groupArchived": group_archived,
                     "order": order,
                 }
                 order += 1
@@ -144,9 +173,11 @@ def page_inventory() -> list[dict]:
                 text = ""
             pages.append({
                 "path": source,
-                "title": first_title(text, file.stem.replace("-", " ").title()),
+                "title": "Добро пожаловать" if source == "README.md" else first_title(text, file.stem.replace("-", " ").title()),
                 "group": "Без раздела",
                 "href": page_href(source),
+                "archived": False,
+                "groupArchived": False,
                 "order": order,
             })
             order += 1
@@ -168,10 +199,10 @@ def upsert_nav(source: str, title: str, group_title: str) -> None:
             break
     target = next((g for g in groups if g.get("title") == group_title), None)
     if target is None:
-        target = {"title": group_title or "Разделы", "items": []}
+        target = {"title": group_title or "Разделы", "items": [], "archived": False}
         groups.append(target)
     if found_item is None:
-        found_item = {"title": title, "href": page_href(source), "source": source}
+        found_item = {"title": title, "href": page_href(source), "source": source, "archived": False}
         target.setdefault("items", []).append(found_item)
     else:
         found_item["title"] = title
@@ -182,6 +213,46 @@ def upsert_nav(source: str, title: str, group_title: str) -> None:
             target.setdefault("items", []).append(found_item)
     data["groups"] = [g for g in groups if g.get("items") or g is target]
     save_nav(data)
+
+
+def set_page_archived(source: str, archived: bool) -> None:
+    data = load_nav()
+    for group in data.get("groups", []):
+        for item in group.get("items", []):
+            if item.get("source") == source:
+                item["archived"] = bool(archived)
+                save_nav(data)
+                return
+    raise ValueError("Страница отсутствует в навигации. Сначала сохрани её.")
+
+
+def set_group_archived(title: str, archived: bool) -> None:
+    data = load_nav()
+    for group in data.get("groups", []):
+        if str(group.get("title") or "") == title:
+            group["archived"] = bool(archived)
+            save_nav(data)
+            return
+    raise ValueError("Раздел не найден")
+
+
+def rename_group(old_title: str, new_title: str) -> None:
+    old_title = old_title.strip()
+    new_title = new_title.strip()
+    if not old_title or not new_title:
+        raise ValueError("Название раздела не может быть пустым")
+    if old_title == new_title:
+        return
+    data = load_nav()
+    groups = data.get("groups", [])
+    if any(str(g.get("title") or "") == new_title for g in groups):
+        raise ValueError("Раздел с таким названием уже существует")
+    for group in groups:
+        if str(group.get("title") or "") == old_title:
+            group["title"] = new_title
+            save_nav(data)
+            return
+    raise ValueError("Раздел не найден")
 
 
 def delete_nav(source: str) -> None:
@@ -261,13 +332,15 @@ def regenerate_wrappers() -> None:
 
 
 class WikiHandler(SimpleHTTPRequestHandler):
-    server_version = "SurwaveWiki/1.3"
+    server_version = "SurwaveWiki/1.4"
 
     def end_headers(self) -> None:
         parsed = urlparse(self.path)
         if parsed.path.startswith("/surwave-site/editor/") or parsed.path in {
             "/surwave-site/assets/js/gradient-runtime.js",
             "/surwave-site/assets/js/site-ui-runtime.js",
+            "/surwave-site/assets/js/site-archive-runtime.js",
+            "/surwave-site/assets/js/site-data.json",
             "/surwave-site/assets/js/site-settings.json",
         }:
             self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
@@ -297,7 +370,14 @@ class WikiHandler(SimpleHTTPRequestHandler):
         parsed = urlparse(self.path)
         if parsed.path == "/api/editor/pages":
             nav = load_nav()
-            self.send_json({"pages": page_inventory(), "groups": [str(g.get("title") or "Разделы") for g in nav.get("groups", [])]})
+            self.send_json({
+                "pages": page_inventory(),
+                "groups": [str(g.get("title") or "Разделы") for g in nav.get("groups", [])],
+                "groupMeta": [
+                    {"title": str(g.get("title") or "Разделы"), "archived": bool(g.get("archived", False))}
+                    for g in nav.get("groups", [])
+                ],
+            })
             return
         if parsed.path == "/api/editor/page":
             try:
@@ -312,6 +392,9 @@ class WikiHandler(SimpleHTTPRequestHandler):
             return
         if parsed.path == "/api/editor/site-settings":
             self.send_json(load_settings())
+            return
+        if parsed.path == "/surwave-site/assets/js/site-data.json":
+            self.send_json(public_nav())
             return
         super().do_GET()
 
@@ -332,6 +415,23 @@ class WikiHandler(SimpleHTTPRequestHandler):
                 wrapper.write_text(wrapper_html(title, source), encoding="utf-8")
                 upsert_nav(source, title, group)
                 self.send_json({"ok": True, "href": "/surwave-site/wiki/" + page_href(source)})
+                return
+            if parsed.path == "/api/editor/archive-page":
+                source = str(data.get("path") or "")
+                content_path(source)
+                set_page_archived(source, bool(data.get("archived", False)))
+                self.send_json({"ok": True, "archived": bool(data.get("archived", False))})
+                return
+            if parsed.path == "/api/editor/archive-group":
+                title = str(data.get("group") or "").strip()
+                set_group_archived(title, bool(data.get("archived", False)))
+                self.send_json({"ok": True, "archived": bool(data.get("archived", False))})
+                return
+            if parsed.path == "/api/editor/rename-group":
+                old_title = str(data.get("old") or "")
+                new_title = str(data.get("new") or "")
+                rename_group(old_title, new_title)
+                self.send_json({"ok": True, "title": new_title.strip()})
                 return
             if parsed.path == "/api/editor/delete":
                 source = str(data.get("path") or "")
