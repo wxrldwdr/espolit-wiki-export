@@ -18,8 +18,8 @@
   mask:none!important;
 }
 
-/* The site-background separator overlaps the inner edge of the frame by 1px.
-   This removes the second anti-aliased arc at rounded corners. */
+/* Site-background separator overlaps the inner edge by 1px to remove the
+   second anti-aliased arc on rounded corners. */
 .sw-copy-pair .sw-copy-card.sw-runtime-border-host>.sw-runtime-buffer-layer{
   inset:2px!important;
   border-radius:14px!important;
@@ -29,15 +29,15 @@
   box-shadow:0 0 0 1px var(--bg,#060a0c)!important;
 }
 
-/* The visible card surface is always opaque. The opacity control blends black
-   with the site background instead of making the layer physically transparent. */
+/* Safe pre-runtime fallback. ip-shade-runtime replaces this with an opaque
+   pre-blended surface, so the animated frame can never bleed into the card. */
 .sw-copy-pair .sw-copy-card.sw-runtime-border-host>.sw-runtime-inner-layer{
   inset:3px!important;
   border-radius:13px!important;
-  background:color-mix(in srgb,#050809 calc(var(--sw-bg-opacity,1) * 100%),var(--bg,#060a0c))!important;
-  opacity:1!important;
+  background:#050809!important;
+  opacity:var(--sw-bg-opacity,1)!important;
   z-index:3!important;
-  transition:background-color .16s ease,inset .12s ease!important;
+  transition:opacity .16s ease,inset .12s ease!important;
 }
 
 .sw-copy-pair:not(.sw-border-gradient):not(.sw-adv-border) .sw-copy-card.sw-runtime-border-host>.sw-runtime-shade-layer{
