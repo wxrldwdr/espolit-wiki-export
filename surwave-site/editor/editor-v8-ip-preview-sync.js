@@ -62,9 +62,23 @@
     if(block?.type==='servercards')queuePath(card.dataset.editorPath);
   }
 
+  function bindPreviewGuards(){
+    const doc=frame.contentDocument;
+    if(!doc||doc.documentElement.dataset.swIpOpacityGuard==='1')return;
+    doc.documentElement.dataset.swIpOpacityGuard='1';
+    const restore=event=>{
+      const target=event.target;
+      if(!(target instanceof frame.contentWindow.Element))return;
+      const root=target.closest('.sw-copy-pair[data-editor-path]');
+      if(!root)return;
+      queueMicrotask(()=>syncPath(root.dataset.editorPath));
+    };
+    ['pointerover','pointerout','pointerdown','pointerup','click'].forEach(type=>doc.addEventListener(type,restore,true));
+  }
+
   document.addEventListener('input',fromControl,true);
   document.addEventListener('change',fromControl,true);
-  frame.addEventListener('load',()=>requestAnimationFrame(syncAll));
-  frame.addEventListener('surwave-preview-updated',()=>requestAnimationFrame(syncAll));
-  [150,400,900,1500].forEach(ms=>setTimeout(()=>{syncAll();relabelShade()},ms));
+  frame.addEventListener('load',()=>requestAnimationFrame(()=>{bindPreviewGuards();syncAll()}));
+  frame.addEventListener('surwave-preview-updated',()=>requestAnimationFrame(()=>{bindPreviewGuards();syncAll()}));
+  [150,400,900,1500].forEach(ms=>setTimeout(()=>{bindPreviewGuards();syncAll();relabelShade()},ms));
 })();
