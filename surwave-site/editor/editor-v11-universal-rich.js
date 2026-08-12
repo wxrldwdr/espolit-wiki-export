@@ -117,7 +117,7 @@
   function makeRich(value,onChange,compact=true,options={}){
     const allowLinks=options.links!==false,allowCopy=options.copy!==false;
     const wrap=document.createElement('div');wrap.className='sw-universal-rich'+(compact?' compact':'');
-    const bar=document.createElement('div');bar.className='rich-toolbar';
+    const bar=document.createElement('div');bar.className='rich-toolbar';if(!allowCopy)bar.dataset.swNoCopy='1';
     const ed=document.createElement('div');ed.className='rich-editor';ed.contentEditable='true';ed.innerHTML=normalizeRich(value||'');
     const commit=()=>{onChange(ed.innerHTML);markDirty()};
     const command=(html,title,cmd)=>bar.appendChild(richButton(html,title,()=>{ed.focus();cmd();commit()}));
@@ -137,7 +137,7 @@
 
   function replaceInput(input,value,setter,options={}){if(!input||input.dataset.swRichReplaced==='1')return;input.dataset.swRichReplaced='1';input.replaceWith(makeRich(value,v=>setter(v),true,options))}
   function addCopyButton(toolbar){
-    if(!toolbar||toolbar.querySelector('.sw-copy-mark-button'))return;
+    if(!toolbar||toolbar.dataset.swNoCopy==='1'||toolbar.querySelector('.sw-copy-mark-button'))return;
     const wrap=toolbar.parentElement,ed=wrap?.querySelector(':scope > .rich-editor')||wrap?.querySelector('.rich-editor');if(!ed)return;
     const b=richButton('⧉','Пометить выделенный текст для копирования',()=>{ed.focus();document.execCommand('createLink',false,'#copy');ed.dispatchEvent(new Event('input',{bubbles:true}))});b.classList.add('sw-copy-mark-button');toolbar.appendChild(b);
   }
