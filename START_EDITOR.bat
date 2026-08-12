@@ -4,6 +4,7 @@ cd /d "%~dp0"
 title Surwave Wiki Editor
 
 if not exist "surwave-site\serve_migrated.py" goto :missing_files
+if not exist "surwave-site\serve_editor.py" goto :missing_files
 if not exist "surwave-site\editor\index.html" goto :missing_files
 
 set "PYTHON_CMD="
@@ -39,7 +40,7 @@ echo.
 echo Starting editor...
 echo.
 
-%PYTHON_CMD% surwave-site\serve_migrated.py --editor
+%PYTHON_CMD% surwave-site\serve_editor.py --editor
 set "EXIT_CODE=%ERRORLEVEL%"
 
 echo.
@@ -63,6 +64,7 @@ echo Project files are missing.
 echo Make sure the ZIP was fully extracted before starting.
 echo Required:
 echo   surwave-site\serve_migrated.py
+echo   surwave-site\serve_editor.py
 echo   surwave-site\editor\index.html
 echo ============================================================
 echo.
