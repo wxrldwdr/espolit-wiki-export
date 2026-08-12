@@ -21,13 +21,16 @@
       const el=document.createElement('option');el.value=option.value;el.textContent=option.label;select.appendChild(el);
     }
     select.value='text';title.insertBefore(select,add);
-    add.addEventListener('click',()=>{
-      const type=select.value||'text';if(type==='text')return;
+    const originalClick=add.onclick;
+    add.onclick=event=>{
+      const type=select.value||'text';
+      if(type==='text'||typeof originalClick!=='function')return originalClick?.call(add,event);
       const previous=Core.defaultBlock;
       const replacement=previous(type);
       Core.defaultBlock=requested=>requested==='text'?Core.clone(replacement):previous(requested);
-      queueMicrotask(()=>{Core.defaultBlock=previous});
-    },true);
+      try{return originalClick.call(add,event)}
+      finally{Core.defaultBlock=previous}
+    };
   }
 
   function scheduleScan(){if(scanFrame)return;scanFrame=requestAnimationFrame(()=>{scanFrame=0;document.querySelectorAll('.nested-zone').forEach(decorateNested)})}
