@@ -4,6 +4,7 @@
   let dragging = false;
   let pointerY = 0;
   let scrollFrame = 0;
+  let scanFrame = 0;
 
   function blockMap() {
     return window.SurwaveEditorBlockRefs instanceof Map ? window.SurwaveEditorBlockRefs : null;
@@ -16,10 +17,13 @@
   function setButtonState(card, collapsed) {
     const button = card.querySelector(':scope > .block-head > .block-collapse-toggle');
     if (!button) return;
-    button.textContent = collapsed ? '▸' : '▾';
-    button.title = collapsed ? 'Развернуть блок' : 'Свернуть блок';
-    button.setAttribute('aria-label', button.title);
-    button.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+    const symbol = collapsed ? '▸' : '▾';
+    const title = collapsed ? 'Развернуть блок' : 'Свернуть блок';
+    if (button.textContent !== symbol) button.textContent = symbol;
+    if (button.title !== title) button.title = title;
+    if (button.getAttribute('aria-label') !== title) button.setAttribute('aria-label', title);
+    const expanded = collapsed ? 'false' : 'true';
+    if (button.getAttribute('aria-expanded') !== expanded) button.setAttribute('aria-expanded', expanded);
   }
 
   function setCollapsed(card, collapsed) {
@@ -33,7 +37,9 @@
       if (collapsed) collapsedPaths.add(path);
       else collapsedPaths.delete(path);
     }
-    card.classList.toggle('is-editor-collapsed', collapsed);
+    if (card.classList.contains('is-editor-collapsed') !== collapsed) {
+      card.classList.toggle('is-editor-collapsed', collapsed);
+    }
     setButtonState(card, collapsed);
   }
 
@@ -51,7 +57,9 @@
         collapsedPaths.delete(path);
       }
     }
-    card.classList.toggle('is-editor-collapsed', collapsed);
+    if (card.classList.contains('is-editor-collapsed') !== collapsed) {
+      card.classList.toggle('is-editor-collapsed', collapsed);
+    }
     setButtonState(card, collapsed);
   }
 
@@ -63,6 +71,10 @@
       button = document.createElement('button');
       button.type = 'button';
       button.className = 'icon-btn block-collapse-toggle';
+      button.textContent = '▾';
+      button.title = 'Свернуть блок';
+      button.setAttribute('aria-label', 'Свернуть блок');
+      button.setAttribute('aria-expanded', 'true');
       const spacer = head.querySelector(':scope > .block-spacer');
       if (spacer) head.insertBefore(button, spacer);
       else head.appendChild(button);
@@ -77,6 +89,14 @@
 
   function scan() {
     document.querySelectorAll('.block-card[data-editor-path]').forEach(injectCollapse);
+  }
+
+  function scheduleScan() {
+    if (scanFrame) return;
+    scanFrame = requestAnimationFrame(() => {
+      scanFrame = 0;
+      scan();
+    });
   }
 
   function promoteCollapsedToBlocks() {
@@ -121,7 +141,7 @@
     const handle = event.target?.closest?.('.drag-handle');
     if (!handle) return;
     dragging = true;
-    pointerY = event.clientY || innerHeight / 2;
+    pointerY = Number.isFinite(event.clientY) ? event.clientY : innerHeight / 2;
     promoteCollapsedToBlocks();
     document.documentElement.classList.add('is-block-dragging');
     if (!scrollFrame) scrollFrame = requestAnimationFrame(autoScrollTick);
@@ -133,8 +153,8 @@
     document.documentElement.classList.remove('is-block-dragging');
     if (scrollFrame) cancelAnimationFrame(scrollFrame);
     scrollFrame = 0;
-    setTimeout(scan, 140);
-    setTimeout(scan, 260);
+    setTimeout(scheduleScan, 80);
+    setTimeout(scheduleScan, 180);
   }
 
   document.addEventListener('dragstart', startAutoScroll, true);
@@ -145,7 +165,11 @@
   document.addEventListener('drop', stopAutoScroll, true);
   document.addEventListener('dragend', stopAutoScroll, true);
 
-  const observer = new MutationObserver(() => queueMicrotask(scan));
-  observer.observe(document.body, {childList:true, subtree:true});
-  [0, 100, 250, 600, 1200].forEach(ms => setTimeout(scan, ms));
+  const observer = new MutationObserver(mutations => {
+    if (!mutations.some(mutation => mutation.addedNodes.length || mutation.removedNodes.length)) return;
+    scheduleScan();
+  });
+  observer.observe(document.getElementById('blocks') || document.body, {childList:true, subtree:true});
+
+  [0, 100, 250, 600].forEach(ms => setTimeout(scheduleScan, ms));
 })();
