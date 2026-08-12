@@ -1,5 +1,4 @@
-/* IP-card border isolation without mask-composite artifacts.
-   Gradient + shade sit underneath; the opaque site-background buffer covers the whole interior. */
+/* IP-card frame without mask-composite. Gradient and shade stay below the surface. */
 .sw-copy-pair .sw-copy-card.sw-runtime-border-host>.sw-runtime-border-layer{
   inset:0!important;
   padding:0!important;
@@ -19,28 +18,32 @@
   mask:none!important;
 }
 
-/* Solid site background cleanly cuts the animated layers to a 3px visual ring. */
+/* The site-background separator overlaps the inner edge of the frame by 1px.
+   This removes the second anti-aliased arc at rounded corners. */
 .sw-copy-pair .sw-copy-card.sw-runtime-border-host>.sw-runtime-buffer-layer{
-  inset:3px!important;
-  border-radius:13px!important;
+  inset:2px!important;
+  border-radius:14px!important;
   background:var(--bg,#060a0c)!important;
   opacity:1!important;
   z-index:2!important;
+  box-shadow:0 0 0 1px var(--bg,#060a0c)!important;
 }
+
+/* The visible card surface is always opaque. The opacity control blends black
+   with the site background instead of making the layer physically transparent. */
 .sw-copy-pair .sw-copy-card.sw-runtime-border-host>.sw-runtime-inner-layer{
   inset:3px!important;
   border-radius:13px!important;
-  background:#050809!important;
-  opacity:var(--sw-bg-opacity,1)!important;
+  background:color-mix(in srgb,#050809 calc(var(--sw-bg-opacity,1) * 100%),var(--bg,#060a0c))!important;
+  opacity:1!important;
   z-index:3!important;
+  transition:background-color .16s ease,inset .12s ease!important;
 }
 
-/* Shade belongs to the gradient frame only. Without gradient it must not draw anything. */
 .sw-copy-pair:not(.sw-border-gradient):not(.sw-adv-border) .sw-copy-card.sw-runtime-border-host>.sw-runtime-shade-layer{
   display:none!important;
 }
 
-/* Content always stays above all visual frame layers. */
 .sw-copy-pair .sw-copy-card.sw-runtime-border-host>*:not(.sw-runtime-border-layer):not(.sw-runtime-buffer-layer):not(.sw-runtime-inner-layer):not(.sw-runtime-shade-layer){
   position:relative!important;
   z-index:4!important;
