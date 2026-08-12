@@ -9,6 +9,8 @@ from urllib.parse import urlparse
 
 import serve_migrated as base
 
+EDITOR_API_VERSION = 2
+
 
 def upsert_nav_preserve_groups(source: str, title: str, group_title: str) -> None:
     data = base.load_nav()
@@ -94,25 +96,37 @@ def move_page(source: str, target_group: str, target_index: int) -> None:
     base.save_nav(data)
 
 
-# Existing save/delete operations must preserve explicitly created empty groups.
 base.upsert_nav = upsert_nav_preserve_groups
 base.delete_nav = delete_nav_preserve_groups
 
-# Regenerated wrappers must request the current site UI runtime instead of a stale cached revision.
 _original_wrapper_html = base.wrapper_html
+
 
 def wrapper_html_fresh(title: str, source: str) -> str:
     html = _original_wrapper_html(title, source)
     return html.replace(
         "/surwave-site/assets/js/site-ui-runtime.js?v=20260812-1740",
-        "/surwave-site/assets/js/site-ui-runtime.js?v=20260812-2040",
+        "/surwave-site/assets/js/site-ui-runtime.js?v=20260812-2216",
     )
+
 
 base.wrapper_html = wrapper_html_fresh
 
 
 class EditorWikiHandler(base.WikiHandler):
-    server_version = "SurwaveWiki/1.6"
+    server_version = "SurwaveWiki/1.7"
+
+    def do_GET(self) -> None:
+        parsed = urlparse(self.path)
+        if parsed.path == "/api/editor/capabilities":
+            self.send_json({
+                "editorApi": EDITOR_API_VERSION,
+                "createGroup": True,
+                "movePage": True,
+                "pasteUpload": True,
+            })
+            return
+        return super().do_GET()
 
     def do_POST(self) -> None:
         parsed = urlparse(self.path)
@@ -145,6 +159,7 @@ def main() -> None:
     url = f"http://127.0.0.1:{port}{start_path}"
     server = ThreadingHTTPServer(("127.0.0.1", port), EditorWikiHandler)
     print(f"Surwave Wiki: {url}")
+    print(f"Editor API: v{EDITOR_API_VERSION}")
     print("Для остановки нажмите Ctrl+C")
     threading.Timer(0.6, lambda: webbrowser.open(url)).start()
     try:
