@@ -4,6 +4,31 @@
   const contentUrl='/surwave-site/content/'+source.split('/').map(encodeURIComponent).join('/');
   let meta=null,applied=false,scheduled=0;
 
+  function visibleText(element){return String(element?.textContent||'').replace(/[\u200B\u200C\u200D\u2060\uFEFF]/g,'').trim()}
+  function isHighlightElement(element){
+    if(!element||element.nodeType!==Node.ELEMENT_NODE)return false;
+    if(element.tagName==='MARK')return true;
+    const style=element.getAttribute('style')||'';
+    return !!element.style.backgroundColor||/(?:^|;)\s*background(?:-color)?\s*:/i.test(style);
+  }
+  function clearHighlightOnly(element){
+    if(!element?.parentNode)return;
+    let target=element;
+    if(element.tagName==='MARK'){
+      target=document.createElement('span');
+      [...element.attributes].forEach(attr=>target.setAttribute(attr.name,attr.value));
+      while(element.firstChild)target.appendChild(element.firstChild);
+      element.replaceWith(target);
+    }
+    target.style.removeProperty('background-color');
+    target.style.removeProperty('background');
+    const style=target.getAttribute('style');
+    if(style!=null&&!style.trim())target.removeAttribute('style');
+    if(target.tagName==='SPAN'&&!target.attributes.length)target.replaceWith(...target.childNodes);
+  }
+  function cleanEmptyHighlights(root){
+    [...root.querySelectorAll?.('mark,[style]')||[]].filter(isHighlightElement).forEach(element=>{if(!visibleText(element))clearHighlightOnly(element)});
+  }
   function sanitize(value){
     const tpl=document.createElement('template');tpl.innerHTML=String(value??'');
     tpl.content.querySelectorAll('script,iframe,object,embed,style').forEach(el=>el.remove());
@@ -13,6 +38,7 @@
         if((attr.name==='href'||attr.name==='src')&&/^javascript:/i.test(attr.value||''))el.removeAttribute(attr.name);
       });
     });
+    cleanEmptyHighlights(tpl.content);
     return tpl.innerHTML;
   }
   function decode(text){
@@ -44,6 +70,7 @@
     (meta.servercards||[]).forEach((titles,pi)=>{
       serverPairs[pi]?.querySelectorAll('.sw-copy-title').forEach((title,i)=>{if(titles?.[i]!=null)title.innerHTML=sanitize(titles[i])});
     });
+    cleanEmptyHighlights(article);
     applied=true;
     observer.disconnect();
   }
