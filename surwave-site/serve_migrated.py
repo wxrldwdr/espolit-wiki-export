@@ -83,8 +83,8 @@ def wrapper_html(title: str, source: str) -> str:
         '<link rel="stylesheet" href="/surwave-site/assets/css/site.css"></head>'
         f'<body data-source="{esc_source}"><div id="app"></div>'
         '<script src="/surwave-site/assets/js/migrated-wiki.js"></script>'
-        '<script src="/surwave-site/assets/js/gradient-runtime.js?v=20260811-1933"></script>'
-        '<script src="/surwave-site/assets/js/site-ui-runtime.js?v=20260811-1933"></script>'
+        '<script src="/surwave-site/assets/js/gradient-runtime.js?v=20260812-1612"></script>'
+        '<script src="/surwave-site/assets/js/site-ui-runtime.js?v=20260812-1612"></script>'
         '</body></html>'
     )
 
