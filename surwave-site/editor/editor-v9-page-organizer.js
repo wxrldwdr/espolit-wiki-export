@@ -83,11 +83,12 @@
 
   async function movePage(path,group,index){
     try{
+      const previousGroup=pageInfo(path)?.group||'';
       await api('/api/editor/move-page',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path,group,index})});
-      if(pathField?.value.trim()===path){
+      if(pathField?.value.trim()===path&&previousGroup!==group){
         ensureGroupOption(group);groupSelect.value=group;groupSelect.dispatchEvent(new Event('change',{bubbles:true}));
       }
-      await refresh(true);notify(`Страница перемещена в «${group}»`);
+      await refresh(true);notify(previousGroup===group?'Порядок страниц сохранён':`Страница перемещена в «${group}»`);
     }catch(e){notify('Ошибка перемещения: '+e.message,4500)}
   }
 
