@@ -31,6 +31,15 @@
     document.querySelectorAll('.block-card[data-editor-path]').forEach(card=>syncPath(card.dataset.editorPath));
   }
 
+  function relabelShade(){
+    document.querySelectorAll('.sw-advanced-gradient-editor .sw-adv-field>span').forEach(label=>{
+      if(label.textContent.trim()==='Затемнение блока')label.textContent='Затемнение градиента';
+    });
+    document.querySelectorAll('.sw-advanced-gradient-editor .sw-adv-note').forEach(note=>{
+      if(note.textContent.includes('«Затемнение блока»'))note.textContent=note.textContent.replace('«Затемнение блока»','«Затемнение градиента»').replace('направленным слоем','направленным слоем только рамки');
+    });
+  }
+
   let queuedPath='';
   let raf=0;
   function queuePath(path){
@@ -57,5 +66,5 @@
   document.addEventListener('change',fromControl,true);
   frame.addEventListener('load',()=>requestAnimationFrame(syncAll));
   frame.addEventListener('surwave-preview-updated',()=>requestAnimationFrame(syncAll));
-  [150,400,900].forEach(ms=>setTimeout(syncAll,ms));
+  [150,400,900,1500].forEach(ms=>setTimeout(()=>{syncAll();relabelShade()},ms));
 })();
