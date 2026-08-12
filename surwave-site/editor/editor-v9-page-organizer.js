@@ -10,6 +10,7 @@
   let draggingPath='';
   let refreshQueued=false;
   let toastTimer=0;
+  let capabilitiesPromise=null;
 
   function notify(text,ms=2200){
     if(!toast)return;
@@ -19,7 +20,23 @@
   async function api(url,options={}){
     const r=await fetch(url,{cache:'no-store',...options});
     let d={};try{d=await r.json()}catch(_){d={error:`HTTP ${r.status}`}}
-    if(!r.ok)throw new Error(d.error||`HTTP ${r.status}`);return d;
+    if(!r.ok){
+      if((r.status===404||d.error==='Неизвестный API-метод')&&/\/(create-group|move-page)$/.test(url)){
+        throw new Error('Запущен старый локальный сервер Wiki. Полностью закрой его и снова запусти START_EDITOR.bat.');
+      }
+      throw new Error(d.error||`HTTP ${r.status}`);
+    }
+    return d;
+  }
+  async function ensureOrganizerApi(){
+    if(!capabilitiesPromise){
+      capabilitiesPromise=fetch('/api/editor/capabilities',{cache:'no-store'}).then(async r=>{
+        let d={};try{d=await r.json()}catch(_){}
+        if(!r.ok||!d.createGroup||!d.movePage)throw new Error('Запущен старый локальный сервер Wiki. Полностью закрой его и снова запусти START_EDITOR.bat.');
+        return d;
+      }).catch(error=>{capabilitiesPromise=null;throw error});
+    }
+    return capabilitiesPromise;
   }
   const pageInfo=path=>(inventory.pages||[]).find(p=>p.path===path);
   function buttonPath(button){return button?.querySelector('small')?.textContent?.trim()||''}
@@ -46,9 +63,10 @@
       const title=prompt('Название нового раздела:','Новый раздел')?.trim();
       if(!title)return;
       try{
+        await ensureOrganizerApi();
         await api('/api/editor/create-group',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title})});
         ensureGroupOption(title);await refresh(true);notify(`Раздел «${title}» создан`);
-      }catch(e){notify('Ошибка создания раздела: '+e.message,4500)}
+      }catch(e){notify('Ошибка создания раздела: '+e.message,6000)}
     };
     toolbar.appendChild(add);pageList.parentNode.insertBefore(toolbar,pageList);
   }
@@ -83,13 +101,14 @@
 
   async function movePage(path,group,index){
     try{
+      await ensureOrganizerApi();
       const previousGroup=pageInfo(path)?.group||'';
       await api('/api/editor/move-page',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path,group,index})});
       if(pathField?.value.trim()===path&&previousGroup!==group){
         ensureGroupOption(group);groupSelect.value=group;groupSelect.dispatchEvent(new Event('change',{bubbles:true}));
       }
       await refresh(true);notify(previousGroup===group?'Порядок страниц сохранён':`Страница перемещена в «${group}»`);
-    }catch(e){notify('Ошибка перемещения: '+e.message,4500)}
+    }catch(e){notify('Ошибка перемещения: '+e.message,6000)}
   }
 
   function bindPage(button){
