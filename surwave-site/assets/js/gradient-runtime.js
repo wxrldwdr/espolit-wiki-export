@@ -2,6 +2,7 @@
   const STATES=['normal','hover','active','copied'];
   const DEFAULT_EDGE='#00ff78';
   const DEFAULT_CENTER='#00ffc0';
+  const GLOBAL_PHASE_ORIGIN=0;
   const clamp=(value,min,max,fallback)=>{const n=Number(value);return Number.isFinite(n)?Math.max(min,Math.min(max,n)):fallback};
 
   function hexRgb(value,fallback=DEFAULT_EDGE){
@@ -81,6 +82,20 @@
     `;(doc.head||doc.documentElement).appendChild(style);
   }
   function cancelAnimation(node,key){const a=node?.[key];if(a){try{a.cancel()}catch(_){}node[key]=null}}
+  function syncedCurrentTime(duration){
+    const d=Math.max(1,Number(duration)||1);
+    const now=Date.now()-GLOBAL_PHASE_ORIGIN;
+    return((now%d)+d)%d;
+  }
+  function startSyncedAnimation(node,key,frames,options){
+    cancelAnimation(node,key);
+    if(!node||typeof node.animate!=='function')return null;
+    const duration=Math.max(1,Number(options?.duration)||1);
+    const animation=node.animate(frames,{...options,duration});
+    try{animation.currentTime=syncedCurrentTime(duration)}catch(_){}
+    node[key]=animation;
+    return animation;
+  }
 
   function directionPoints(mode){
     if(mode==='right')return{start:'100% 50%',end:'0% 50%',origin:'right center'};
@@ -105,7 +120,7 @@
     }
     if(kind==='wave'){
       if(center)return{frames:[{backgroundSize:'120% 230%',opacity:.62},{backgroundSize:'300% 300%',opacity:1},{backgroundSize:'150% 260%',opacity:.74},{backgroundSize:'330% 280%',opacity:1},{backgroundSize:'120% 230%',opacity:.62}],easing:'ease-in-out'};
-      const mid=mode==='top'||mode==='bottom'?'50% 50%':'50% 50%';
+      const mid='50% 50%';
       return{frames:[{backgroundPosition:dir.start,opacity:.6},{backgroundPosition:mid,opacity:1},{backgroundPosition:dir.end,opacity:.7},{backgroundPosition:dir.start,opacity:.6}],easing:'ease-in-out'};
     }
     if(kind==='glow')return{frames:[{opacity:.52,filter:'brightness(.86)'},{opacity:1,filter:'brightness(1.32)'},{opacity:.52,filter:'brightness(.86)'}],easing:'ease-in-out'};
@@ -121,8 +136,8 @@
     node.style.removeProperty('transform');node.style.removeProperty('filter');node.style.opacity='1';node.style.backgroundPosition='50% 50%';node.style.backgroundSize=state.animation==='shimmer'?'360% 360%':'260% 260%';
     const dir=directionPoints(state.mode);node.style.transformOrigin=dir.origin;
     if(!isText)node.style.setProperty('inset',state.animation==='orbit'?'-72%':'0','important');
-    const def=animationFrames(state.animation,isText,state);if(!def||typeof node.animate!=='function')return;
-    node._swGradientAnimation=node.animate(def.frames,{duration:state.speed*1000,iterations:Infinity,easing:def.easing,fill:'both'});
+    const def=animationFrames(state.animation,isText,state);if(!def)return;
+    startSyncedAnimation(node,'_swGradientAnimation',def.frames,{duration:state.speed*1000,iterations:Infinity,easing:def.easing,fill:'both'});
   }
 
   function ensureLayers(target){
@@ -149,7 +164,7 @@
       if(config.borderGradient){layers.border.style.backgroundImage=gradient(borderState);animateNode(layers.border,borderState,false)}else cancelAnimation(layers.border,'_swGradientAnimation');
       if(type==='servercards'){layers.shade.hidden=false;layers.shade.style.backgroundImage=shadeGradient(borderState)}else layers.shade.hidden=true;
       cancelAnimation(target,'_swGlowAnimation');
-      if(config.borderGradient&&borderState.animation==='glow'&&typeof target.animate==='function')target._swGlowAnimation=target.animate([{boxShadow:'0 8px 22px rgba(0,0,0,.25),0 0 0 rgba(0,255,120,0)'},{boxShadow:'0 10px 28px rgba(0,0,0,.30),0 0 24px rgba(0,255,192,.28)'},{boxShadow:'0 8px 22px rgba(0,0,0,.25),0 0 0 rgba(0,255,120,0)'}],{duration:borderState.speed*1000,iterations:Infinity,easing:'ease-in-out'});
+      if(config.borderGradient&&borderState.animation==='glow')startSyncedAnimation(target,'_swGlowAnimation',[{boxShadow:'0 8px 22px rgba(0,0,0,.25),0 0 0 rgba(0,255,120,0)'},{boxShadow:'0 10px 28px rgba(0,0,0,.30),0 0 24px rgba(0,255,192,.28)'},{boxShadow:'0 8px 22px rgba(0,0,0,.25),0 0 0 rgba(0,255,120,0)'}],{duration:borderState.speed*1000,iterations:Infinity,easing:'ease-in-out',fill:'both'});
       applyText(textElements,textState,config.textGradient);
       target.dataset.swGradientState=name;
     }
@@ -165,5 +180,5 @@
   function initServerCards(root,preview){const config=normalizeConfig(decode(root.getAttribute('data-sw-copy-config'))||{},'servercards');root.querySelectorAll(':scope > .sw-copy-card').forEach(card=>controller(card,config,[...card.querySelectorAll('.sw-copy-title,.sw-copy-ip,.sw-copy-state')],'servercards',preview))}
   function initLinkGroup(root,preview){const config=normalizeConfig(decode(root.getAttribute('data-sw-link-gradient'))||{},'linkgroup'),group=root.querySelector(':scope > .link-group')||root.querySelector('.link-group');if(group)controller(group,config,[...group.querySelectorAll('.link-copy strong,.link-copy small')],'linkgroup',preview)}
   function init(doc=document,options={}){if(!doc)return;ensureStyle(doc);const preview=!!options.preview;doc.querySelectorAll('.sw-copy-pair[data-sw-copy-config]').forEach(root=>initServerCards(root,preview));doc.querySelectorAll('.sw-link-gradient[data-sw-link-gradient]').forEach(root=>initLinkGroup(root,preview))}
-  window.SurwaveGradientRuntime={init,normalizeConfig,gradient,shadeGradient};
+  window.SurwaveGradientRuntime={init,normalizeConfig,gradient,shadeGradient,syncedCurrentTime};
 })();
