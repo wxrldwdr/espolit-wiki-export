@@ -16,16 +16,37 @@
     if(mode==='bottom')return`linear-gradient(180deg,${dark} 0%,${clear} 100%)`;
     return`linear-gradient(90deg,${clear} 0%,${dark} 100%)`;
   }
+  function surfaceColor(config){
+    const opacity=clamp(config?.backgroundOpacity,0,100,100);
+    return`color-mix(in srgb,#050809 ${opacity}%,var(--bg,#060a0c))`;
+  }
 
   function updateRoot(root){
     const config=decode(root.getAttribute('data-sw-copy-config'))||{};
-    if(config.borderGradient===false)return;
     const states=config.gradientStates?.border||{};
+    const surface=surfaceColor(config);
+    root.style.setProperty('--sw-bg-opacity',String(clamp(config.backgroundOpacity,0,100,100)/100));
     root.querySelectorAll(':scope > .sw-copy-card').forEach(card=>{
       const stateName=card.dataset.swGradientState||'normal';
       const state=states[stateName]||states.normal||{};
       const shade=[...card.children].find(node=>node.classList?.contains('sw-runtime-shade-layer'));
-      if(shade)shade.style.setProperty('background-image',shadeGradient(state),'important');
+      const inner=[...card.children].find(node=>node.classList?.contains('sw-runtime-inner-layer'));
+      const buffer=[...card.children].find(node=>node.classList?.contains('sw-runtime-buffer-layer'));
+      if(buffer){
+        buffer.style.setProperty('background','var(--bg,#060a0c)','important');
+        buffer.style.setProperty('opacity','1','important');
+      }
+      if(inner){
+        inner.style.setProperty('background',surface,'important');
+        inner.style.setProperty('opacity','1','important');
+      }
+      if(shade){
+        if(config.borderGradient===false)shade.style.setProperty('display','none','important');
+        else{
+          shade.style.removeProperty('display');
+          shade.style.setProperty('background-image',shadeGradient(state),'important');
+        }
+      }
     });
   }
 
@@ -37,7 +58,7 @@
   function observe(doc){
     if(!doc||observed.has(doc))return;observed.add(doc);updateAll(doc);
     const observer=new MutationObserver(()=>queue(doc));
-    observer.observe(doc.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['data-sw-gradient-state','data-sw-copy-config']});
+    observer.observe(doc.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['data-sw-gradient-state','data-sw-copy-config','style','class']});
   }
 
   function bindPreview(){
