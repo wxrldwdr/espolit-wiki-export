@@ -32,20 +32,11 @@
       const shade=[...card.children].find(node=>node.classList?.contains('sw-runtime-shade-layer'));
       const inner=[...card.children].find(node=>node.classList?.contains('sw-runtime-inner-layer'));
       const buffer=[...card.children].find(node=>node.classList?.contains('sw-runtime-buffer-layer'));
-      if(buffer){
-        buffer.style.setProperty('background','var(--bg,#060a0c)','important');
-        buffer.style.setProperty('opacity','1','important');
-      }
-      if(inner){
-        inner.style.setProperty('background',surface,'important');
-        inner.style.setProperty('opacity','1','important');
-      }
+      if(buffer){buffer.style.setProperty('background','var(--bg,#060a0c)','important');buffer.style.setProperty('opacity','1','important')}
+      if(inner){inner.style.setProperty('background',surface,'important');inner.style.setProperty('opacity','1','important')}
       if(shade){
         if(config.borderGradient===false)shade.style.setProperty('display','none','important');
-        else{
-          shade.style.removeProperty('display');
-          shade.style.setProperty('background-image',shadeGradient(state),'important');
-        }
+        else{shade.style.removeProperty('display');shade.style.setProperty('background-image',shadeGradient(state),'important')}
       }
     });
   }
@@ -58,7 +49,7 @@
   function observe(doc){
     if(!doc||observed.has(doc))return;observed.add(doc);updateAll(doc);
     const observer=new MutationObserver(()=>queue(doc));
-    observer.observe(doc.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['data-sw-gradient-state','data-sw-copy-config','style','class']});
+    observer.observe(doc.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['data-sw-gradient-state','data-sw-copy-config']});
   }
 
   function bindPreview(){
