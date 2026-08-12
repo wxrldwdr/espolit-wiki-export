@@ -1,6 +1,5 @@
 (() => {
   const savedRanges = new WeakMap();
-  let activeEditor = null;
 
   function editorFromToolbar(toolbar) {
     if (!toolbar) return null;
@@ -22,7 +21,6 @@
     if (!rangeInside(editor, range)) return false;
     try {
       savedRanges.set(editor, range.cloneRange());
-      activeEditor = editor;
       return true;
     } catch (_) {
       return false;
@@ -37,7 +35,6 @@
       const selection = window.getSelection();
       selection.removeAllRanges();
       selection.addRange(stored);
-      activeEditor = editor;
       return stored;
     } catch (_) {
       return null;
@@ -84,11 +81,27 @@
     if (!toolbar) return null;
     const editor = editorFromToolbar(toolbar);
     if (!editor) return null;
+
     if (target.matches('input[type="color"]')) {
       const title = String(target.title || '').toLowerCase();
-      return {editor, property:title.includes('выдел') ? 'background-color' : 'color', value:target.value};
+      return {
+        editor,
+        property: title.includes('выдел') ? 'background-color' : 'color',
+        value: target.value
+      };
     }
-    if (target.matches('select.rich-size')) return {editor, property:'font-size', value:target.value};
+
+    if (target.matches('select.rich-size')) {
+      const raw = String(target.value || '').trim();
+      return {editor, property:'font-size', value:/px$/i.test(raw) ? raw : `${raw}px`};
+    }
+
+    if (target.matches('input[type="number"]')) {
+      const raw = Number(target.value);
+      if (Number.isFinite(raw) && raw >= 1 && raw <= 500) {
+        return {editor, property:'font-size', value:`${raw}px`};
+      }
+    }
     return null;
   }
 
@@ -118,15 +131,18 @@
 
   function handleStyleEvent(event) {
     const control = richControl(event.target);
-    if (!control) return;
+    if (!control) return false;
     event.preventDefault();
     event.stopImmediatePropagation();
     applyStyle(control.editor, control.property, control.value);
+    return true;
   }
 
   document.addEventListener('input', handleStyleEvent, true);
   document.addEventListener('change', event => {
-    if (!event.target?.matches?.('select.rich-size')) return;
+    const target = event.target;
+    if (!target?.closest?.('.rich-toolbar')) return;
+    if (!target.matches('select.rich-size,input[type="number"]')) return;
     handleStyleEvent(event);
   }, true);
 
@@ -137,7 +153,7 @@
   }
 
   document.addEventListener('dragend', event => disarm(event.target?.closest?.('.block-card')), true);
-  document.addEventListener('drop', event => {
+  document.addEventListener('drop', () => {
     document.querySelectorAll('.block-card[draggable="true"]').forEach(disarm);
   }, true);
   document.addEventListener('mouseup', () => {
