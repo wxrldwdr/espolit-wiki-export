@@ -5,7 +5,6 @@ import sys
 import threading
 import webbrowser
 from http.server import ThreadingHTTPServer
-from pathlib import Path
 from urllib.parse import urlparse
 
 import serve_migrated as base
@@ -98,6 +97,18 @@ def move_page(source: str, target_group: str, target_index: int) -> None:
 # Existing save/delete operations must preserve explicitly created empty groups.
 base.upsert_nav = upsert_nav_preserve_groups
 base.delete_nav = delete_nav_preserve_groups
+
+# Regenerated wrappers must request the current site UI runtime instead of a stale cached revision.
+_original_wrapper_html = base.wrapper_html
+
+def wrapper_html_fresh(title: str, source: str) -> str:
+    html = _original_wrapper_html(title, source)
+    return html.replace(
+        "/surwave-site/assets/js/site-ui-runtime.js?v=20260812-1740",
+        "/surwave-site/assets/js/site-ui-runtime.js?v=20260812-2040",
+    )
+
+base.wrapper_html = wrapper_html_fresh
 
 
 class EditorWikiHandler(base.WikiHandler):
