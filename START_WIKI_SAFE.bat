@@ -38,7 +38,7 @@ echo Python: %PYTHON_CMD%
 echo Project: %CD%
 echo.
 echo Closing stale Surwave Wiki servers...
-powershell -NoProfile -ExecutionPolicy Bypass -Command "Get-CimInstance Win32_Process ^| Where-Object { ($_.Name -match '^python.*\.exe$') -and $_.CommandLine -and (($_.CommandLine -match 'surwave-site[\\/]serve_editor\.py') -or ($_.CommandLine -match 'surwave-site[\\/]serve_migrated\.py')) } ^| ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }" >nul 2>nul
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$all=Get-CimInstance Win32_Process; foreach($p in $all){ if(($p.Name -match '^python.*\.exe$') -and $p.CommandLine -and (($p.CommandLine -match 'surwave-site[\\/]serve_editor\.py') -or ($p.CommandLine -match 'surwave-site[\\/]serve_migrated\.py'))){ Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue } }" >nul 2>nul
 timeout /t 1 /nobreak >nul
 
 echo Starting Wiki...
