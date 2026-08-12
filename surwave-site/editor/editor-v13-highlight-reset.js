@@ -15,10 +15,8 @@
   }
   function remember(editor){
     if(!editor)return false;
-    const sel=window.getSelection();
-    if(!sel?.rangeCount)return false;
-    const range=sel.getRangeAt(0);
-    if(!rangeInside(editor,range))return false;
+    const sel=window.getSelection();if(!sel?.rangeCount)return false;
+    const range=sel.getRangeAt(0);if(!rangeInside(editor,range))return false;
     try{savedRanges.set(editor,range.cloneRange());return true}catch(_){return false}
   }
   function restore(editor){
@@ -35,32 +33,73 @@
     const raw=el.getAttribute('style')||'';
     return !!el.style.backgroundColor||!!el.style.background||/(?:^|;)\s*background(?:-color)?\s*:/i.test(raw);
   }
+  function cleanShell(el){
+    const shell=el.tagName==='MARK'?document.createElement('span'):el.cloneNode(false);
+    if(el.tagName==='MARK')[...el.attributes].forEach(attr=>shell.setAttribute(attr.name,attr.value));
+    shell.style.removeProperty('background');
+    shell.style.removeProperty('background-color');
+    if(shell.hasAttribute('style')&&!shell.getAttribute('style').trim())shell.removeAttribute('style');
+    return shell;
+  }
+  function normalShell(el){return el.cloneNode(false)}
+  function appendWrapped(target,shell,contents){
+    if(!contents?.hasChildNodes())return;
+    shell.appendChild(contents);target.appendChild(shell);
+  }
   function stripBackground(el){
     if(!el?.parentNode)return;
-    if(el.tagName==='MARK'){
-      const span=document.createElement('span');
-      [...el.attributes].forEach(attr=>span.setAttribute(attr.name,attr.value));
-      span.style.removeProperty('background');
-      span.style.removeProperty('background-color');
-      if(span.hasAttribute('style')&&!span.getAttribute('style').trim())span.removeAttribute('style');
-      while(el.firstChild)span.appendChild(el.firstChild);
-      el.replaceWith(span);
-      if(!span.attributes.length)span.replaceWith(...span.childNodes);
-      return;
-    }
-    el.style.removeProperty('background');
-    el.style.removeProperty('background-color');
-    if(el.hasAttribute('style')&&!el.getAttribute('style').trim())el.removeAttribute('style');
-    if(el.tagName==='SPAN'&&!el.attributes.length)el.replaceWith(...el.childNodes);
+    const shell=cleanShell(el);
+    while(el.firstChild)shell.appendChild(el.firstChild);
+    el.replaceWith(shell);
+    if(shell.tagName==='SPAN'&&!shell.attributes.length)shell.replaceWith(...shell.childNodes);
   }
-  function cleanFragment(fragment){
-    const all=[...fragment.querySelectorAll('mark,[style]')];
-    for(let i=all.length-1;i>=0;i--){
-      const el=all[i];
-      if(el.isConnected||fragment.contains(el)){
-        if(hasBackground(el))stripBackground(el);
+  function backgroundAncestor(node,editor){
+    let el=node?.nodeType===Node.ELEMENT_NODE?node:node?.parentElement;
+    while(el&&el!==editor){if(hasBackground(el))return el;el=el.parentElement}
+    return null;
+  }
+  function depth(el){let n=0,p=el;while((p=p.parentElement))n++;return n}
+  function rangeBetween(startMarker,endMarker){
+    const range=document.createRange();range.setStartAfter(startMarker);range.setEndBefore(endMarker);return range;
+  }
+  function splitCandidate(el,startMarker,endMarker){
+    if(!el?.isConnected)return;
+    const hasStart=el.contains(startMarker),hasEnd=el.contains(endMarker);
+    if(!hasStart&&!hasEnd){stripBackground(el);return}
+
+    try{
+      const replacement=document.createDocumentFragment();
+      if(hasStart&&hasEnd){
+        const before=document.createRange();before.selectNodeContents(el);before.setEndBefore(startMarker);
+        const middle=document.createRange();middle.setStartAfter(startMarker);middle.setEndBefore(endMarker);
+        const after=document.createRange();after.selectNodeContents(el);after.setStartAfter(endMarker);
+        const beforeFrag=before.cloneContents(),middleFrag=middle.cloneContents(),afterFrag=after.cloneContents();
+        appendWrapped(replacement,normalShell(el),beforeFrag);
+        replacement.appendChild(startMarker);
+        appendWrapped(replacement,cleanShell(el),middleFrag);
+        replacement.appendChild(endMarker);
+        appendWrapped(replacement,normalShell(el),afterFrag);
+        el.replaceWith(replacement);
+        return;
       }
-    }
+      if(hasStart){
+        const before=document.createRange();before.selectNodeContents(el);before.setEndBefore(startMarker);
+        const tail=document.createRange();tail.setStartAfter(startMarker);tail.setEnd(el,el.childNodes.length);
+        const beforeFrag=before.cloneContents(),tailFrag=tail.cloneContents();
+        appendWrapped(replacement,normalShell(el),beforeFrag);
+        replacement.appendChild(startMarker);
+        appendWrapped(replacement,cleanShell(el),tailFrag);
+        el.replaceWith(replacement);
+        return;
+      }
+      const head=document.createRange();head.setStart(el,0);head.setEndBefore(endMarker);
+      const after=document.createRange();after.setStartAfter(endMarker);after.setEnd(el,el.childNodes.length);
+      const headFrag=head.cloneContents(),afterFrag=after.cloneContents();
+      appendWrapped(replacement,cleanShell(el),headFrag);
+      replacement.appendChild(endMarker);
+      appendWrapped(replacement,normalShell(el),afterFrag);
+      el.replaceWith(replacement);
+    }catch(error){console.warn('Surwave highlight split failed',error)}
   }
   function cleanEmptyHighlights(editor){
     const all=[...editor.querySelectorAll('mark,[style]')];
@@ -71,17 +110,28 @@
     }
   }
   function clearHighlight(editor){
-    const range=restore(editor);
-    if(!range||range.collapsed)return false;
+    const range=restore(editor);if(!range)return false;
+    if(range.collapsed){
+      const hit=backgroundAncestor(range.startContainer,editor);if(!hit)return false;
+      stripBackground(hit);cleanEmptyHighlights(editor);editor.dispatchEvent(new Event('input',{bubbles:true}));return true;
+    }
     try{
-      const fragment=range.extractContents();
-      cleanFragment(fragment);
-      const holder=document.createElement('span');
-      holder.appendChild(fragment);
-      range.insertNode(holder);
-      const selected=document.createRange();selected.selectNodeContents(holder);
-      const sel=window.getSelection();sel.removeAllRanges();sel.addRange(selected);
-      savedRanges.set(editor,selected.cloneRange());
+      const startMarker=document.createElement('span'),endMarker=document.createElement('span');
+      startMarker.dataset.swHighlightBoundary='start';endMarker.dataset.swHighlightBoundary='end';
+      const endRange=range.cloneRange();endRange.collapse(false);endRange.insertNode(endMarker);
+      const startRange=range.cloneRange();startRange.collapse(true);startRange.insertNode(startMarker);
+
+      const selected=rangeBetween(startMarker,endMarker);
+      const candidates=[...editor.querySelectorAll('mark,[style]')]
+        .filter(hasBackground)
+        .filter(el=>{try{return selected.intersectsNode(el)}catch(_){return false}})
+        .sort((a,b)=>depth(b)-depth(a));
+      candidates.forEach(el=>splitCandidate(el,startMarker,endMarker));
+
+      const finalRange=rangeBetween(startMarker,endMarker);
+      startMarker.remove();endMarker.remove();
+      const sel=window.getSelection();sel.removeAllRanges();sel.addRange(finalRange);
+      savedRanges.set(editor,finalRange.cloneRange());
       cleanEmptyHighlights(editor);
       editor.dispatchEvent(new Event('input',{bubbles:true}));
       return true;
