@@ -1,4 +1,9 @@
 /* Release IP-card fallback + copyable inline text. Runtime owns the card once initialized. */
+.sw-copy-pair .sw-copy-card{--sw-bg-opacity:var(--sw-bg-n,1)}
+.sw-copy-pair .sw-copy-card:hover{--sw-bg-opacity:var(--sw-bg-h,1)}
+.sw-copy-pair .sw-copy-card:active{--sw-bg-opacity:var(--sw-bg-a,1)}
+.sw-copy-pair .sw-copy-card.is-copied{--sw-bg-opacity:var(--sw-bg-c,1)}
+
 .sw-copy-pair.sw-border-gradient .sw-copy-card:not(.sw-runtime-border-host),
 .sw-copy-pair.sw-adv-border .sw-copy-card:not(.sw-runtime-border-host){
   position:relative!important;
@@ -6,12 +11,11 @@
   overflow:hidden!important;
   border:3px solid transparent!important;
   background:
-    linear-gradient(#050809,#050809) padding-box,
+    linear-gradient(rgb(5 8 9 / var(--sw-bg-opacity,1)),rgb(5 8 9 / var(--sw-bg-opacity,1))) padding-box,
     var(--sw-b-grad,linear-gradient(90deg,rgba(0,255,120,.28) 0%,rgba(0,255,192,.96) 50%,rgba(0,255,120,.28) 100%)) border-box!important;
 }
 
-/* Once gradient-runtime.js initializes the card, its real layers must stay visible.
-   Do not hide .sw-runtime-border-layer/.sw-runtime-inner-layer here. */
+/* Once gradient-runtime.js initializes the card, its real layers stay visible. */
 .sw-copy-pair .sw-copy-card.sw-runtime-border-host{
   position:relative!important;
   isolation:isolate!important;
@@ -29,10 +33,91 @@
 .sw-copy-pair .sw-copy-card.sw-runtime-border-host>.sw-runtime-shade-layer{
   display:block!important;
 }
+.sw-copy-pair .sw-copy-card.sw-runtime-border-host>.sw-runtime-inner-layer{
+  opacity:var(--sw-bg-opacity,1)!important;
+  transition:opacity .16s ease,inset .12s ease!important;
+}
 .sw-copy-pair .sw-copy-card.sw-runtime-border-host>*:not(.sw-runtime-border-layer):not(.sw-runtime-inner-layer):not(.sw-runtime-shade-layer){
   position:relative!important;
   z-index:3!important;
 }
+
+/* Link-group parity with the editor preview. */
+.article .link-group{
+  margin:16px 0;
+  border:1px solid #273337;
+  border-radius:12px;
+  overflow:hidden;
+  background:#091013;
+}
+.article .link-item{
+  display:flex;
+  align-items:center;
+  gap:13px;
+  padding:13px 15px;
+  color:var(--text)!important;
+}
+.article .link-item+.link-item{border-top:1px solid #273337}
+.article .link-item:hover{background:#0e181b}
+.article .link-item img{width:62px;height:62px;object-fit:cover;border-radius:9px;border:0}
+.article .link-copy{display:flex;flex:1;min-width:0;flex-direction:column}
+.article .link-copy strong{color:#eef7f3;font-size:inherit}
+.article .link-copy small{color:#8da19a;margin-top:2px}
+.article .link-arrow{font-size:28px;color:#72857f}
+.article .sw-link-gradient .link-item:not(:has(img)){min-height:70px}
+
+/* Runtime must not replace the normal link-group frame when its gradient border is disabled. */
+.sw-link-gradient:not(.sw-adv-border):not(.sw-border-gradient) .link-group.sw-runtime-border-host{
+  border:1px solid #273337!important;
+  background:#091013!important;
+}
+.sw-link-gradient:not(.sw-adv-border):not(.sw-border-gradient) .link-group.sw-runtime-border-host>.sw-runtime-border-layer,
+.sw-link-gradient:not(.sw-adv-border):not(.sw-border-gradient) .link-group.sw-runtime-border-host>.sw-runtime-inner-layer,
+.sw-link-gradient:not(.sw-adv-border):not(.sw-border-gradient) .link-group.sw-runtime-border-host>.sw-runtime-shade-layer{
+  display:none!important;
+}
+
+/* A link-group uses the editor's thin frame, not the 3px IP-card frame. */
+.sw-link-gradient.sw-adv-border .link-group:not(.sw-runtime-border-host),
+.sw-link-gradient.sw-border-gradient .link-group:not(.sw-runtime-border-host){
+  border:1px solid transparent!important;
+  background:linear-gradient(#091013,#091013) padding-box,var(--sw-b-grad,linear-gradient(90deg,rgba(0,255,120,.14),rgba(0,255,192,.84) 50%,rgba(0,255,120,.14))) border-box!important;
+}
+.sw-link-gradient.sw-adv-border .link-group.sw-runtime-border-host,
+.sw-link-gradient.sw-border-gradient .link-group.sw-runtime-border-host{
+  position:relative!important;
+  isolation:isolate!important;
+  overflow:hidden!important;
+  border:0!important;
+  background:transparent!important;
+}
+.sw-link-gradient.sw-adv-border .link-group.sw-runtime-border-host>.sw-runtime-inner-layer,
+.sw-link-gradient.sw-adv-border .link-group.sw-runtime-border-host>.sw-runtime-shade-layer,
+.sw-link-gradient.sw-border-gradient .link-group.sw-runtime-border-host>.sw-runtime-inner-layer,
+.sw-link-gradient.sw-border-gradient .link-group.sw-runtime-border-host>.sw-runtime-shade-layer{
+  display:none!important;
+}
+.sw-link-gradient.sw-adv-border .link-group.sw-runtime-border-host::after,
+.sw-link-gradient.sw-border-gradient .link-group.sw-runtime-border-host::after{
+  content:""!important;
+  display:block!important;
+  position:absolute!important;
+  z-index:1!important;
+  inset:1px!important;
+  pointer-events:none!important;
+  border-radius:11px!important;
+  background:#091013!important;
+}
+.sw-link-gradient .link-group.sw-runtime-border-host>*:not(.sw-runtime-border-layer):not(.sw-runtime-inner-layer):not(.sw-runtime-shade-layer){
+  position:relative!important;
+  z-index:3!important;
+}
+
+/* Other visual blocks: same sizing as the editor preview. */
+.article .mention-prefix{font-weight:700}
+.article .embed-image{width:150px;min-height:110px}
+.article .brewery-recipe{padding:24px 12px}
+.article .brewery-recipe h4{font-size:21px}
 
 .article a.sw-copy-text,
 a.sw-copy-text{
