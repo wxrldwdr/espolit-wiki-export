@@ -25,6 +25,16 @@
 .block-card.is-editor-collapsed .block-kind{
   color:#9fb3ac;
 }
+.drag-handle{
+  user-select:none!important;
+  -webkit-user-select:none!important;
+  cursor:grab!important;
+}
+.rich-editor,
+.rich-editor *{
+  user-select:text!important;
+  -webkit-user-select:text!important;
+}
 html.is-block-dragging .drag-handle{
   cursor:grabbing!important;
 }
