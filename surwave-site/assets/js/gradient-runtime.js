@@ -174,11 +174,11 @@
 
         if(type==='servercards'){
           layers.buffer.hidden=false;layers.buffer.style.setProperty('inset',inset,'important');layers.buffer.style.setProperty('background','var(--bg,#060a0c)','important');
-          layers.inner.hidden=false;layers.inner.style.setProperty('inset',inset,'important');layers.inner.style.setProperty('background','#050809','important');layers.inner.style.opacity=String(config.backgroundOpacity/100);
+          layers.inner.hidden=false;layers.inner.style.setProperty('inset',inset,'important');layers.inner.style.setProperty('background','#050809','important');layers.inner.style.setProperty('opacity',String(config.backgroundOpacity/100),'important');
           layers.shade.hidden=false;layers.shade.style.backgroundImage=shadeGradient(borderState);
         }else{
           layers.buffer.hidden=true;
-          layers.inner.hidden=false;layers.inner.style.setProperty('inset',inset,'important');layers.inner.style.setProperty('background','#091013','important');layers.inner.style.opacity='1';
+          layers.inner.hidden=false;layers.inner.style.setProperty('inset',inset,'important');layers.inner.style.setProperty('background','#091013','important');layers.inner.style.setProperty('opacity','1','important');
           layers.shade.hidden=true;
         }
       }
