@@ -70,8 +70,16 @@
     const block={type:'image',src:source,alt:'',caption:''};
     const zone=target?.closest?.('.nested-zone');
     if(zone){
-      const add=[...zone.querySelectorAll(':scope > .nested-title button')].find(b=>/^\+\s*Блок/.test(b.textContent||''));
-      if(add){clickWithDefault(add,'text',block);return true}
+      const title=zone.querySelector(':scope > .nested-title');
+      const add=[...title?.querySelectorAll('button')||[]].find(b=>/^\+\s*Блок/.test(b.textContent||''));
+      const typeSelect=title?.querySelector('.sw-nested-type');
+      if(add){
+        const previousValue=typeSelect?.value;
+        if(typeSelect)typeSelect.value='text';
+        clickWithDefault(add,'text',block);
+        if(typeSelect&&previousValue)typeSelect.value=previousValue;
+        return true;
+      }
     }
     const bar=document.getElementById('bottomAddBar')||document.getElementById('mainAddBar');
     const select=bar?.querySelector('select'),button=bar?.querySelector('button');
