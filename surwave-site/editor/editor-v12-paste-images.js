@@ -58,35 +58,80 @@
     const response=await fetch('/api/editor/upload',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:`paste-${stamp}.png`,data:await dataUrl(blob)})});
     let result={};try{result=await response.json()}catch(_){}
     if(!response.ok)throw new Error(result.error||`HTTP ${response.status}`);
+    if(!result.source)throw new Error('Сервер не вернул постоянный путь изображения');
     return result.source;
   }
 
-  function clickWithDefault(button,requestedType,block){
-    const previous=Core.defaultBlock;
-    Core.defaultBlock=type=>type===requestedType?Core.clone(block):previous(type);
-    try{button.click()}finally{queueMicrotask(()=>{Core.defaultBlock=previous})}
+  function directCards(zone){
+    const list=zone?.querySelector(':scope > .blocks');
+    return list?[...list.children].filter(el=>el.classList?.contains('block-card')):[];
   }
-  function insertImageBlock(source,target){
-    const block={type:'image',src:source,alt:'',caption:''};
-    const zone=target?.closest?.('.nested-zone');
-    if(zone){
-      const title=zone.querySelector(':scope > .nested-title');
-      const add=[...title?.querySelectorAll('button')||[]].find(b=>/^\+\s*Блок/.test(b.textContent||''));
-      const typeSelect=title?.querySelector('.sw-nested-type');
-      if(add){
-        const previousValue=typeSelect?.value;
-        if(typeSelect)typeSelect.value='text';
-        clickWithDefault(add,'text',block);
-        if(typeSelect&&previousValue)typeSelect.value=previousValue;
-        return true;
-      }
+  function nestedBase(zone){
+    const cards=directCards(zone);
+    if(cards.length){
+      const path=cards[0].dataset.editorPath||'';
+      return path.replace(/\.\d+$/,'');
     }
+    const owner=zone.closest('.block-card[data-editor-path]');
+    const ownerPath=owner?.dataset.editorPath||'';
+    if(!ownerPath)return'';
+    const step=zone.closest('.step-card');
+    if(step){
+      const body=owner.querySelector(':scope > .block-body');
+      const steps=body?[...body.querySelectorAll(':scope > .step-card')]:[];
+      const index=steps.indexOf(step);
+      if(index>=0)return `${ownerPath}.steps.${index}.children`;
+    }
+    return `${ownerPath}.children`;
+  }
+  function sourceField(card){
+    if(!card)return null;
+    return [...card.querySelectorAll(':scope > .block-body input.field')].find(input=>
+      input.placeholder==='.gitbook/assets/image.png'||/gitbook\/assets\/image\.png/i.test(input.placeholder||'')
+    )||card.querySelector(':scope > .block-body input.field');
+  }
+  function commitSource(path,source){
+    const card=document.querySelector(`.block-card[data-editor-path="${CSS.escape(path)}"]`);
+    const input=sourceField(card);
+    if(!input)return false;
+    input.value=source;
+    input.dispatchEvent(new Event('input',{bubbles:true}));
+    return true;
+  }
+
+  function insertNestedImage(source,zone){
+    const title=zone.querySelector(':scope > .nested-title');
+    const add=[...title?.querySelectorAll('button')||[]].find(b=>/^\+\s*Блок/.test(b.textContent||''));
+    const typeSelect=title?.querySelector('.sw-nested-type');
+    if(!add||!typeSelect)return false;
+    const base=nestedBase(zone),index=directCards(zone).length;
+    if(!base)return false;
+    const previous=typeSelect.value;
+    typeSelect.value='image';
+    add.click();
+    const path=`${base}.${index}`;
+    const ok=commitSource(path,source);
+    const freshZone=document.querySelector(`.block-card[data-editor-path="${CSS.escape(path)}"]`)?.closest('.nested-zone');
+    const freshSelect=freshZone?.querySelector(':scope > .nested-title .sw-nested-type');
+    if(freshSelect)freshSelect.value=previous||'text';
+    return ok;
+  }
+
+  function insertTopLevelImage(source){
+    const root=document.getElementById('blocks');
+    const index=root?[...root.children].filter(el=>el.classList?.contains('block-card')).length:0;
     const bar=document.getElementById('bottomAddBar')||document.getElementById('mainAddBar');
     const select=bar?.querySelector('select'),button=bar?.querySelector('button');
-    if(select&&button){
-      const previousValue=select.value;select.value='image';clickWithDefault(button,'image',block);select.value=previousValue;return true;
-    }
-    return false;
+    if(!select||!button)return false;
+    select.value='image';
+    button.click();
+    return commitSource(String(index),source);
+  }
+
+  function insertImageBlock(source,target){
+    const zone=target?.closest?.('.nested-zone');
+    if(zone&&insertNestedImage(source,zone))return true;
+    return insertTopLevelImage(source);
   }
 
   document.addEventListener('paste',async event=>{
@@ -99,8 +144,9 @@
     try{
       notify('Загружаю изображение из буфера обмена…',5000);
       const source=await uploadPng(file);
-      if(!insertImageBlock(source,target))throw new Error('Не удалось определить место вставки блока');
-      markDirty();notify('PNG сохранён в .gitbook/assets и вставлен в страницу',3200);
+      if(!insertImageBlock(source,target))throw new Error('PNG сохранён, но блок изображения не удалось добавить в страницу');
+      markDirty();
+      notify('PNG сохранён в .gitbook/assets и вставлен как блок изображения',3200);
     }catch(error){notify('Ошибка вставки изображения: '+error.message,5000)}
   },true);
 })();
