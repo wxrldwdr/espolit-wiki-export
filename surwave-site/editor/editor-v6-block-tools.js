@@ -138,8 +138,8 @@
   }
 
   function startAutoScroll(event) {
-    const handle = event.target?.closest?.('.drag-handle');
-    if (!handle) return;
+    const card = event.target?.closest?.('.block-card[data-editor-path]');
+    if (!card || card.dataset.swDragArmed !== '1') return;
     dragging = true;
     pointerY = Number.isFinite(event.clientY) ? event.clientY : innerHeight / 2;
     promoteCollapsedToBlocks();
