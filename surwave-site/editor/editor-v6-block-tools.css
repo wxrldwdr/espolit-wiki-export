@@ -1,0 +1,33 @@
+/* Editor-only block moving/collapsing helpers. */
+.block-collapse-toggle{
+  width:27px!important;
+  min-width:27px!important;
+  height:26px!important;
+  padding:0!important;
+  color:#789089!important;
+  font-size:15px!important;
+  line-height:1!important;
+}
+.block-collapse-toggle:hover{
+  color:#00ffc0!important;
+  background:rgba(0,255,192,.06)!important;
+  border-color:rgba(0,255,192,.16)!important;
+}
+.block-card.is-editor-collapsed > .block-body{
+  display:none!important;
+}
+.block-card.is-editor-collapsed > .block-head{
+  border-bottom:0!important;
+}
+.block-card.is-editor-collapsed{
+  background:#081013;
+}
+.block-card.is-editor-collapsed .block-kind{
+  color:#9fb3ac;
+}
+html.is-block-dragging .drag-handle{
+  cursor:grabbing!important;
+}
+html.is-block-dragging body{
+  user-select:none!important;
+}
