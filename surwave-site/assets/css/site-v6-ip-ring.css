@@ -1,0 +1,37 @@
+/* IP-card border isolation: gradient and shade are physically limited to the 3px frame ring. */
+.sw-copy-pair .sw-copy-card.sw-runtime-border-host>.sw-runtime-border-layer,
+.sw-copy-pair .sw-copy-card.sw-runtime-border-host>.sw-runtime-shade-layer{
+  inset:0!important;
+  padding:3px!important;
+  border-radius:16px!important;
+  box-sizing:border-box!important;
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0)!important;
+  -webkit-mask-composite:xor!important;
+  mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0)!important;
+  mask-composite:exclude!important;
+}
+
+/* The site background is the solid separator between the frame and translucent black interior. */
+.sw-copy-pair .sw-copy-card.sw-runtime-border-host>.sw-runtime-buffer-layer{
+  inset:3px!important;
+  border-radius:13px!important;
+  background:var(--bg,#060a0c)!important;
+  opacity:1!important;
+}
+.sw-copy-pair .sw-copy-card.sw-runtime-border-host>.sw-runtime-inner-layer{
+  inset:3px!important;
+  border-radius:13px!important;
+  background:#050809!important;
+  opacity:var(--sw-bg-opacity,1)!important;
+}
+
+/* Shade belongs to the gradient frame only. Without gradient it must not draw anything. */
+.sw-copy-pair:not(.sw-border-gradient):not(.sw-adv-border) .sw-copy-card.sw-runtime-border-host>.sw-runtime-shade-layer{
+  display:none!important;
+}
+
+/* Content always stays above all visual frame layers. */
+.sw-copy-pair .sw-copy-card.sw-runtime-border-host>*:not(.sw-runtime-border-layer):not(.sw-runtime-buffer-layer):not(.sw-runtime-inner-layer):not(.sw-runtime-shade-layer){
+  position:relative!important;
+  z-index:4!important;
+}
