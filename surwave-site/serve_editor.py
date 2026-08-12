@@ -9,7 +9,7 @@ from urllib.parse import urlparse
 
 import serve_migrated as base
 
-EDITOR_API_VERSION = 2
+EDITOR_API_VERSION = 3
 
 
 def upsert_nav_preserve_groups(source: str, title: str, group_title: str) -> None:
@@ -114,12 +114,13 @@ base.wrapper_html = wrapper_html_fresh
 
 
 class EditorWikiHandler(base.WikiHandler):
-    server_version = "SurwaveWiki/1.7"
+    server_version = "SurwaveWiki/1.8"
 
     def do_GET(self) -> None:
         parsed = urlparse(self.path)
         if parsed.path == "/api/editor/capabilities":
             self.send_json({
+                "server": "serve_editor",
                 "editorApi": EDITOR_API_VERSION,
                 "createGroup": True,
                 "movePage": True,
