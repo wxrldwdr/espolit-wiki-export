@@ -16,7 +16,8 @@ ROOT = Path(__file__).resolve().parents[1]
 SITE = ROOT / "surwave-site"
 CONTENT = SITE / "content"
 WIKI = SITE / "wiki"
-DATA_FILE = SITE / "assets" / "js" / "site-data.json"
+EDITOR_DATA_FILE = SITE / "assets" / "js" / "site-data-editor.json"
+PUBLIC_DATA_FILE = SITE / "assets" / "js" / "site-data.json"
 SETTINGS_FILE = SITE / "assets" / "js" / "site-settings.json"
 MEDIA = ROOT / ".gitbook" / "assets"
 WIKI_PATH = "/surwave-site/wiki/index.html"
@@ -92,7 +93,13 @@ def wrapper_html(title: str, source: str) -> str:
 
 def load_nav() -> dict:
     try:
-        data = json.loads(DATA_FILE.read_text(encoding="utf-8"))
+        data = json.loads(EDITOR_DATA_FILE.read_text(encoding="utf-8"))
+        if isinstance(data, dict) and isinstance(data.get("groups"), list):
+            return data
+    except (OSError, json.JSONDecodeError):
+        pass
+    try:
+        data = json.loads(PUBLIC_DATA_FILE.read_text(encoding="utf-8"))
         if isinstance(data, dict) and isinstance(data.get("groups"), list):
             return data
     except (OSError, json.JSONDecodeError):
@@ -100,13 +107,8 @@ def load_nav() -> dict:
     return {"groups": []}
 
 
-def save_nav(data: dict) -> None:
-    DATA_FILE.parent.mkdir(parents=True, exist_ok=True)
-    DATA_FILE.write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
-
-
-def public_nav() -> dict:
-    source = load_nav()
+def public_nav(source: dict | None = None) -> dict:
+    source = source or load_nav()
     home_archived = False
     public_groups: list[dict] = []
     for group in source.get("groups", []):
@@ -128,6 +130,20 @@ def public_nav() -> dict:
             "items": items,
         })
     return {"groups": public_groups, "homeArchived": home_archived}
+
+
+def write_public_nav(data: dict | None = None) -> None:
+    PUBLIC_DATA_FILE.parent.mkdir(parents=True, exist_ok=True)
+    PUBLIC_DATA_FILE.write_text(
+        json.dumps(public_nav(data), ensure_ascii=False, separators=(",", ":")),
+        encoding="utf-8",
+    )
+
+
+def save_nav(data: dict) -> None:
+    EDITOR_DATA_FILE.parent.mkdir(parents=True, exist_ok=True)
+    EDITOR_DATA_FILE.write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    write_public_nav(data)
 
 
 def first_title(text: str, fallback: str) -> str:
@@ -332,7 +348,7 @@ def regenerate_wrappers() -> None:
 
 
 class WikiHandler(SimpleHTTPRequestHandler):
-    server_version = "SurwaveWiki/1.4"
+    server_version = "SurwaveWiki/1.5"
 
     def end_headers(self) -> None:
         parsed = urlparse(self.path)
@@ -341,6 +357,7 @@ class WikiHandler(SimpleHTTPRequestHandler):
             "/surwave-site/assets/js/site-ui-runtime.js",
             "/surwave-site/assets/js/site-archive-runtime.js",
             "/surwave-site/assets/js/site-data.json",
+            "/surwave-site/assets/js/site-data-editor.json",
             "/surwave-site/assets/js/site-settings.json",
         }:
             self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
@@ -468,6 +485,7 @@ class WikiHandler(SimpleHTTPRequestHandler):
 
 def main() -> None:
     os.chdir(ROOT)
+    save_nav(load_nav())
     save_settings(load_settings())
     regenerate_wrappers()
     port = find_port()
