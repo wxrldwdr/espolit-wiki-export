@@ -5,7 +5,6 @@
   const previousParse=Core.parseDocument;
   const previousSerializeDocument=Core.serializeDocument;
   const META_RE=/<!--SURWAVE_GRADIENTS:([^\r\n]*?)-->\s*/;
-
   const clone=value=>JSON.parse(JSON.stringify(value));
 
   function walk(blocks,base='',fn=()=>{}){
@@ -22,14 +21,14 @@
     if(!match)return{};
     try{return JSON.parse(decodeURIComponent(match[1]))||{};}catch(_){return{};}
   }
-
   function strip(source){return String(source||'').replace(META_RE,'');}
 
   function collect(blocks){
-    const meta={version:2,blocks:{}};
+    const meta={version:3,blocks:{}};
     walk(blocks,'',(block,path)=>{
       if(!['servercards','linkgroup'].includes(block.type))return;
-      meta.blocks[path]={
+      window.SurwaveEnsureGradientStates?.(block);
+      const value={
         type:block.type,
         borderGradient:!!block.borderGradient,
         textGradient:!!block.textGradient,
@@ -39,6 +38,8 @@
         textCenter:block.textCenter||'#00ffc0',
         gradientStates:clone(block.gradientStates||{})
       };
+      if(block.type==='servercards')value.backgroundOpacity=Number.isFinite(Number(block.backgroundOpacity))?Number(block.backgroundOpacity):100;
+      meta.blocks[path]=value;
     });
     return meta;
   }
@@ -55,6 +56,7 @@
       if(value.textEdge)block.textEdge=value.textEdge;
       if(value.textCenter)block.textCenter=value.textCenter;
       if(value.gradientStates)block.gradientStates=clone(value.gradientStates);
+      if(block.type==='servercards'&&value.backgroundOpacity!=null)block.backgroundOpacity=value.backgroundOpacity;
       window.SurwaveEnsureGradientStates?.(block);
     });
   }
