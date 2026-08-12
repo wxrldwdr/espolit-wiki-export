@@ -13,17 +13,20 @@
     if(!doc)return null;
     try{return doc.querySelector(`[data-editor-path="${CSS.escape(path)}"]`)}catch(_){return null}
   }
+  function surfaceColor(percent){return`color-mix(in srgb,#050809 ${percent}%,var(--bg,#060a0c))`}
 
   function syncPath(path){
     const block=refs.get(path);
     if(!block||block.type!=='servercards')return;
     const root=findPreviewRoot(path);
     if(!root)return;
-    const opacity=clamp(block.backgroundOpacity)/100;
+    const percent=clamp(block.backgroundOpacity),opacity=percent/100;
     root.style.setProperty('--sw-bg-opacity',String(opacity));
     root.querySelectorAll(':scope > .sw-copy-card').forEach(card=>{
       const inner=[...card.children].find(node=>node.classList?.contains('sw-runtime-inner-layer'));
-      if(inner)inner.style.setProperty('opacity',String(opacity),'important');
+      const buffer=[...card.children].find(node=>node.classList?.contains('sw-runtime-buffer-layer'));
+      if(buffer){buffer.style.setProperty('background','var(--bg,#060a0c)','important');buffer.style.setProperty('opacity','1','important')}
+      if(inner){inner.style.setProperty('background',surfaceColor(percent),'important');inner.style.setProperty('opacity','1','important')}
     });
   }
 
