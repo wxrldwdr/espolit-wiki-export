@@ -2,6 +2,7 @@
   const SETTINGS_URL='/surwave-site/assets/js/site-settings.json';
   let settings={logo:{src:'/surwave-site/assets/logos/surwave-wiki-logo.svg',width:226,height:58,x:0,y:0}};
   const shadeScript=document.createElement('script');shadeScript.src='/surwave-site/assets/js/ip-shade-runtime.js?v=20260812-2117';shadeScript.defer=true;document.head.appendChild(shadeScript);
+  const richCss=document.createElement('link');richCss.rel='stylesheet';richCss.href='/surwave-site/assets/css/site-v7-rich.css?v=20260812-2216';document.head.appendChild(richCss);
   const richScript=document.createElement('script');richScript.src='/surwave-site/assets/js/rich-fields-runtime.js?v=20260812-2216';richScript.defer=true;document.head.appendChild(richScript);
   function mediaUrl(src){src=String(src||'').trim();if(!src)return'/surwave-site/assets/logos/surwave-wiki-logo.svg';if(/^https?:|^data:|^\//i.test(src))return src;if(src.includes('.gitbook/assets/'))return'/.gitbook/assets/'+encodeURIComponent(src.split('.gitbook/assets/').pop().split('/').pop());return'/'+src.replace(/^\.\//,'')}
   function applyLogo(){
