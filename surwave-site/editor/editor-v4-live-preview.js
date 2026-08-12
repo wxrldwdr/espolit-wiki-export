@@ -46,22 +46,32 @@
 
         const existing=new Map();
         [...article.children].forEach(node=>{const path=node.getAttribute('data-editor-path');if(path)existing.set(path,node)});
-        const fragment=doc.createDocumentFragment();
-        [...nextArticle.children].forEach(nextNode=>{
+        const keep=new Set();
+        const wanted=[...nextArticle.children];
+
+        wanted.forEach((nextNode,index)=>{
           const path=nextNode.getAttribute('data-editor-path');
           const nextHash=hash(nextNode.outerHTML);
           const old=path?existing.get(path):null;
+          const reference=article.children[index]||null;
+          let desired;
+
           if(old&&old.dataset.swPreviewHash===nextHash){
-            fragment.appendChild(old);
-            existing.delete(path);
+            desired=old;
+            if(desired!==reference)article.insertBefore(desired,reference);
           }else{
-            const fresh=doc.importNode(nextNode,true);
-            if(path)fresh.dataset.swPreviewHash=nextHash;
-            fragment.appendChild(fresh);
-            if(path)existing.delete(path);
+            desired=doc.importNode(nextNode,true);
+            if(path)desired.dataset.swPreviewHash=nextHash;
+            if(old&&old===reference)old.replaceWith(desired);
+            else{
+              article.insertBefore(desired,reference);
+              if(old&&old.isConnected)old.remove();
+            }
           }
+          keep.add(desired);
         });
-        article.replaceChildren(fragment);
+
+        [...article.children].forEach(node=>{if(!keep.has(node))node.remove()});
 
         patching=true;
         requestAnimationFrame(()=>{
