@@ -1,0 +1,10 @@
+.article .sw-inline-list{display:block;margin:.35em 0 .45em;padding-left:1.35em;text-align:left}
+.article .sw-inline-list-item{display:list-item;list-style-type:disc;padding-left:.1em;margin:.06em 0}
+.article .sw-inline-arrow{display:inline-block;width:1.82em;height:1.02em;vertical-align:-.18em;margin:0 .08em;background:url('/surwave-site/assets/icons/inline-arrow.svg') center/contain no-repeat}
+.article figure.sw-video-block,.article figure.sw-gif-block{overflow:hidden;border:1px solid var(--line);border-radius:12px;background:#030607}
+.article .sw-video-media,.article .sw-gif-media{display:block!important;width:100%!important;max-width:100%!important;margin:0!important;border:0!important;border-radius:0!important;background:#030607}
+.article .sw-video-media{aspect-ratio:16/9;min-height:220px;object-fit:contain}
+.article figure.sw-video-block figcaption,.article figure.sw-gif-block figcaption{padding:8px 11px;color:#758780}
+.article figure.sw-video-block.is-media-error{position:relative;min-height:180px}
+.article figure.sw-video-block.is-media-error::after{content:'Видео не удалось загрузить';position:absolute;inset:0;display:grid;place-items:center;color:#8fa19a;background:#05090b;pointer-events:none}
+@media(max-width:650px){.article .sw-video-media{min-height:160px}}
