@@ -106,7 +106,7 @@ def wrapper_html_fresh(title: str, source: str) -> str:
     html = _original_wrapper_html(title, source)
     return html.replace(
         "/surwave-site/assets/js/site-ui-runtime.js?v=20260812-1740",
-        "/surwave-site/assets/js/site-ui-runtime.js?v=20260813-0930",
+        "/surwave-site/assets/js/site-ui-runtime.js?v=20260813-0945",
     )
 
 
@@ -114,7 +114,7 @@ base.wrapper_html = wrapper_html_fresh
 
 
 class EditorWikiHandler(base.WikiHandler):
-    server_version = "SurwaveWiki/1.9"
+    server_version = "SurwaveWiki/2.0"
 
     def do_GET(self) -> None:
         parsed = urlparse(self.path)
