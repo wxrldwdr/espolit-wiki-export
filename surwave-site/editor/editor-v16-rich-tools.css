@@ -1,0 +1,12 @@
+.sw-inline-list{display:block;margin:.35em 0 .45em;padding-left:1.35em;text-align:left}
+.sw-inline-list-item{display:list-item;list-style-type:disc;padding-left:.1em;margin:.06em 0}
+.sw-inline-arrow{display:inline-block;width:1.82em;height:1.02em;vertical-align:-.18em;margin:0 .08em;background:url('/surwave-site/assets/icons/inline-arrow.svg') center/contain no-repeat}
+.sw-arrow-tool-icon{display:block;width:24px;height:16px;background:url('/surwave-site/assets/icons/inline-arrow.svg') center/contain no-repeat}
+.sw-inline-list-button{font-weight:800;letter-spacing:-1px}
+.list-row{position:relative}
+.sw-list-drag-handle{display:inline-flex;flex:0 0 22px;align-self:stretch;align-items:center;justify-content:center;color:#698078;cursor:grab;user-select:none;touch-action:none;font:700 15px/1 monospace}
+.sw-list-drag-handle:hover{color:#00ffc0}
+.sw-list-drag-handle:active{cursor:grabbing}
+.list-row.sw-list-dragging{opacity:.42}
+.list-row.sw-list-drop-before{box-shadow:inset 0 2px 0 #00ffc0}
+.list-row.sw-list-drop-after{box-shadow:inset 0 -2px 0 #00ffc0}
