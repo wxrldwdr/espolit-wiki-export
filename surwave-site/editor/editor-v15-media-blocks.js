@@ -35,9 +35,9 @@
   function mediaMarkup(block){
     const caption=block.caption?`<figcaption>${Core.sanitizeRich(block.caption)}</figcaption>`:'';
     if(block.type==='gif'){
-      return `<figure><img class="wiki-image sw-gif-media" data-sw-media="gif" src="${Core.esc(persistentMediaUrl(block.src))}" alt="${Core.esc(block.alt||'')}">${caption}</figure>`;
+      return `<figure class="sw-gif-block" data-sw-media-block="gif"><img class="wiki-image sw-gif-media" data-sw-media="gif" src="${Core.esc(persistentMediaUrl(block.src))}" alt="${Core.esc(block.alt||'')}">${caption}</figure>`;
     }
-    return `<figure><video class="sw-video-media" data-sw-media="video" src="${Core.esc(persistentMediaUrl(block.src))}"${block.poster?` poster="${Core.esc(persistentMediaUrl(block.poster))}"`:''}${block.controls!==false?' controls':''}${block.autoplay?' autoplay':''}${block.loop?' loop':''}${block.muted?' muted':''} playsinline></video>${caption}</figure>`;
+    return `<figure class="sw-video-block" data-sw-media-block="video"><video class="sw-video-media" data-sw-media="video" src="${Core.esc(persistentMediaUrl(block.src))}"${block.poster?` poster="${Core.esc(persistentMediaUrl(block.poster))}"`:''}${block.controls!==false?' controls':''}${block.autoplay?' autoplay':''}${block.loop?' loop':''}${block.muted?' muted':''} preload="metadata" playsinline></video>${caption}</figure>`;
   }
   function transformForSave(blocks){
     return (blocks||[]).map(block=>{
@@ -49,11 +49,23 @@
     });
   }
   function parseMediaRaw(markdown){
-    const text=String(markdown||'').trim();
-    let m=text.match(/^<figure><img class="wiki-image sw-gif-media" data-sw-media="gif" src="([^"]*)" alt="([^"]*)">(?:<figcaption>([\s\S]*?)<\/figcaption>)?<\/figure>$/i);
-    if(m)return {type:'gif',src:m[1],alt:m[2],caption:m[3]||''};
-    m=text.match(/^<figure><video class="sw-video-media" data-sw-media="video" src="([^"]*)"(?: poster="([^"]*)")?( controls)?( autoplay)?( loop)?( muted)? playsinline><\/video>(?:<figcaption>([\s\S]*?)<\/figcaption>)?<\/figure>$/i);
-    if(m)return {type:'video',src:m[1],poster:m[2]||'',controls:!!m[3],autoplay:!!m[4],loop:!!m[5],muted:!!m[6],caption:m[7]||''};
+    const text=String(markdown||'').trim();if(!text.startsWith('<figure'))return null;
+    const template=document.createElement('template');template.innerHTML=text;
+    const figure=template.content.firstElementChild;
+    if(!figure||figure.tagName!=='FIGURE'||template.content.children.length!==1)return null;
+    const gif=figure.querySelector(':scope > img[data-sw-media="gif"],:scope > img.sw-gif-media');
+    if(gif){
+      const caption=figure.querySelector(':scope > figcaption');
+      return {type:'gif',src:gif.getAttribute('src')||'',alt:gif.getAttribute('alt')||'',caption:caption?.innerHTML||''};
+    }
+    const video=figure.querySelector(':scope > video[data-sw-media="video"],:scope > video.sw-video-media');
+    if(video){
+      const caption=figure.querySelector(':scope > figcaption');
+      return {
+        type:'video',src:video.getAttribute('src')||'',poster:video.getAttribute('poster')||'',
+        controls:video.hasAttribute('controls'),autoplay:video.hasAttribute('autoplay'),loop:video.hasAttribute('loop'),muted:video.hasAttribute('muted'),caption:caption?.innerHTML||''
+      };
+    }
     return null;
   }
   function restoreMedia(blocks){
@@ -101,9 +113,9 @@
       const path=pre.dataset.editorPath||'';
       const holder=document.createElement('template');
       if(block.type==='gif'){
-        holder.innerHTML=`<figure class="sw-gif-block" data-editor-path="${Core.esc(path)}"><img class="sw-gif-media" src="${Core.mediaUrl(block.src)}" alt="${Core.esc(block.alt||'')}">${block.caption?`<figcaption>${Core.sanitizeRich(block.caption)}</figcaption>`:''}</figure>`;
+        holder.innerHTML=`<figure class="sw-gif-block" data-editor-path="${Core.esc(path)}"><img class="sw-gif-media" data-sw-media="gif" src="${Core.mediaUrl(block.src)}" alt="${Core.esc(block.alt||'')}">${block.caption?`<figcaption>${Core.sanitizeRich(block.caption)}</figcaption>`:''}</figure>`;
       }else{
-        holder.innerHTML=`<figure class="sw-video-block" data-editor-path="${Core.esc(path)}"><video class="sw-video-media" src="${Core.mediaUrl(block.src)}"${block.poster?` poster="${Core.mediaUrl(block.poster)}"`:''}${block.controls!==false?' controls':''}${block.autoplay?' autoplay':''}${block.loop?' loop':''}${block.muted?' muted':''} playsinline></video>${block.caption?`<figcaption>${Core.sanitizeRich(block.caption)}</figcaption>`:''}</figure>`;
+        holder.innerHTML=`<figure class="sw-video-block" data-editor-path="${Core.esc(path)}"><video class="sw-video-media" data-sw-media="video" src="${Core.mediaUrl(block.src)}"${block.poster?` poster="${Core.mediaUrl(block.poster)}"`:''}${block.controls!==false?' controls':''}${block.autoplay?' autoplay':''}${block.loop?' loop':''}${block.muted?' muted':''} preload="metadata" playsinline></video>${block.caption?`<figcaption>${Core.sanitizeRich(block.caption)}</figcaption>`:''}</figure>`;
       }
       pre.replaceWith(holder.content.firstElementChild);
     });
@@ -166,6 +178,6 @@
   const observer=new MutationObserver(()=>requestAnimationFrame(scan));observer.observe(document.getElementById('blocks')||document.body,{childList:true,subtree:true});
   [150,350,700,1200].forEach(ms=>setTimeout(scan,ms));
 
-  Core.previewCss+=`.article .sw-gif-block,.article .sw-video-block{overflow:hidden;border:1px solid var(--line);border-radius:12px;background:#030607}.article .sw-gif-media,.article .sw-video-media{display:block;width:100%;max-width:100%;margin:0;border:0;border-radius:0;background:#030607}.article .sw-video-media{aspect-ratio:16/9;object-fit:contain}.article .sw-gif-block figcaption,.article .sw-video-block figcaption{padding:8px 11px;color:#758780}`;
+  Core.previewCss+=`.article .sw-gif-block,.article .sw-video-block{overflow:hidden;border:1px solid var(--line);border-radius:12px;background:#030607}.article .sw-gif-media,.article .sw-video-media{display:block;width:100%;max-width:100%;margin:0;border:0;border-radius:0;background:#030607}.article .sw-video-media{aspect-ratio:16/9;min-height:180px;object-fit:contain}.article .sw-gif-block figcaption,.article .sw-video-block figcaption{padding:8px 11px;color:#758780}`;
   window.SurwaveMediaBlocksLoaded=true;
 })();
