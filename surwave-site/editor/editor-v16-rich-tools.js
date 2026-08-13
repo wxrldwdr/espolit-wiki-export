@@ -79,6 +79,19 @@
     [...box.querySelectorAll('span[data-sw-inline-arrow="1"]')].forEach(protect);
     return box.innerHTML;
   }
+  function protectDirectRichFields(blocks,tokens){
+    walkBlocks(blocks,b=>{
+      for(const key of ['html','summaryHtml','nameHtml','bodyHtml','prefixHtml'])if(b[key]!=null)b[key]=protectCustom(b[key],tokens);
+      if(b.type==='list')b.items=(b.items||[]).map(value=>protectCustom(value,tokens));
+      if(b.type==='gif'||b.type==='video')b.caption=protectCustom(b.caption||'',tokens);
+      if(b.type==='linkgroup')b.items=(b.items||[]).map(item=>({...item,description:protectCustom(item.description||'',tokens)}));
+      if(b.type==='embed'){
+        b.title=protectCustom(b.title||'',tokens);
+        b.description=protectCustom(b.description||'',tokens);
+      }
+    });
+    return blocks;
+  }
 
   const previousParse=Core.parseDocument;
   Core.parseDocument=source=>{
@@ -89,7 +102,8 @@
   const previousSerialize=Core.serializeDocument;
   Core.serializeDocument=(frontmatter,blocks)=>{
     const copy=Core.clone(blocks||[]),tokens=new Map();
-    mapRichFields(copy,value=>protectCustom(value,tokens));
+    mapRichFields(copy,normalizeLegacyMarks);
+    protectDirectRichFields(copy,tokens);
     let output=previousSerialize(frontmatter,copy);
     if(tokens.size){
       output=output.replace(RICH_META_RE,(full,payload)=>{
