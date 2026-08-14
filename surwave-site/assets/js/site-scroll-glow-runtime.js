@@ -24,8 +24,6 @@
     const sidebar = document.getElementById('sidebar');
     if (!sidebar) return;
 
-    // v9 used a traditional-looking thin scrollbar. Keep its DOM harmlessly
-    // detached from the visual layer so old listeners cannot draw it again.
     document.querySelectorAll('.sw-sidebar-scroll-track').forEach(track => {
       track.hidden = true;
       track.style.display = 'none';
@@ -51,12 +49,12 @@
     rail.style.top = `${Math.round(rect.top + inset)}px`;
     rail.style.height = `${railHeight}px`;
 
-    // The marker length represents how much of the category panel is visible.
-    // Less scrolling -> larger glow; a very long navigation -> smaller glow.
+    // Длина свечения показывает видимую долю меню, но теперь визуально примерно
+    // вдвое длиннее старого маркера. Чем меньше остаётся прокручивать, тем оно длиннее.
     const visibleRatio = Math.max(0.02, Math.min(1, clientHeight / scrollHeight));
-    const proportional = Math.round(railHeight * visibleRatio);
-    const minHeight = Math.min(86, railHeight);
-    const maxHeight = Math.min(300, Math.round(railHeight * 0.82));
+    const proportional = Math.round(railHeight * visibleRatio * 2);
+    const minHeight = Math.min(150, railHeight);
+    const maxHeight = Math.min(620, Math.round(railHeight * 0.94));
     const markerHeight = Math.max(minHeight, Math.min(maxHeight, proportional));
 
     const progress = Math.max(0, Math.min(1, sidebar.scrollTop / overflow));
@@ -64,7 +62,7 @@
     const y = Math.round(travel * progress);
 
     marker.style.height = `${markerHeight}px`;
-    marker.style.transform = `translate3d(-0.5px,${y}px,0)`;
+    marker.style.transform = `translate3d(0,${y}px,0)`;
     marker.style.setProperty('--sw-scroll-progress', progress.toFixed(4));
     marker.style.setProperty('--sw-visible-ratio', visibleRatio.toFixed(4));
   }
