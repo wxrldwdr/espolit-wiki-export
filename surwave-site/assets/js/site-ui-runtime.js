@@ -5,7 +5,7 @@
   const richCss=document.createElement('link');richCss.rel='stylesheet';richCss.href='/surwave-site/assets/css/site-v7-rich.css?v=20260814-1420';document.head.appendChild(richCss);
   const contentCss=document.createElement('link');contentCss.rel='stylesheet';contentCss.href='/surwave-site/assets/css/site-v8-content.css?v=20260813-0945';document.head.appendChild(contentCss);
   const navigationCss=document.createElement('link');navigationCss.rel='stylesheet';navigationCss.href='/surwave-site/assets/css/site-v9-navigation.css?v=20260814-2010';document.head.appendChild(navigationCss);
-  const scrollGlowCss=document.createElement('link');scrollGlowCss.rel='stylesheet';scrollGlowCss.href='/surwave-site/assets/css/site-v10-scroll-glow.css?v=20260814-2025';document.head.appendChild(scrollGlowCss);
+  const scrollGlowCss=document.createElement('link');scrollGlowCss.rel='stylesheet';scrollGlowCss.href='/surwave-site/assets/css/site-v10-scroll-glow.css?v=20260814-2035';document.head.appendChild(scrollGlowCss);
   const richScript=document.createElement('script');richScript.src='/surwave-site/assets/js/rich-fields-runtime.js?v=20260812-2243';richScript.defer=true;document.head.appendChild(richScript);
   const mediaScript=document.createElement('script');mediaScript.src='/surwave-site/assets/js/site-media-runtime.js?v=20260813-0955';mediaScript.defer=true;document.head.appendChild(mediaScript);
   const inlineRichScript=document.createElement('script');inlineRichScript.src='/surwave-site/assets/js/site-inline-rich-runtime.js?v=20260814-1420';inlineRichScript.defer=true;document.head.appendChild(inlineRichScript);
