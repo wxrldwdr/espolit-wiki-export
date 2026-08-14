@@ -109,7 +109,7 @@
   <script src="editor-v11-universal-rich.js?v=20260812-2243"></script>
   <script src="editor-v13-highlight-reset.js?v=20260812-2345"></script>
   <script src="editor-v14-line-breaks.js?v=20260812-2345"></script>
-  <script src="editor-v12-paste-images.js?v=20260813-0118"></script>
+  <script src="editor-v12-paste-images.js?v=20260814-1420"></script>
   <script src="editor-v2-cards-ui.js?v=20260812-2040"></script>
   <script src="editor-v2-gradient-states-ui.js?v=20260812-2040"></script>
   <script src="editor-v2-gradient-preview.js?v=20260812-2040"></script>
@@ -120,7 +120,8 @@
   <script src="editor-v6-block-tools.js?v=20260812-2132"></script>
   <script src="editor-v16-rich-tools.js?v=20260814-1408"></script>
   <script src="editor-v17-highlight-persistence.js?v=20260814-1408"></script>
-  <script src="editor-v18-rich-persistence.js?v=20260814-1408"></script>
+  <script src="editor-v18-rich-persistence.js?v=20260814-1420"></script>
+  <script src="editor-v20-inline-media.js?v=20260814-1420"></script>
   <script>
     setTimeout(() => {
       const core=window.SurwaveEditorCoreV2;
@@ -131,11 +132,12 @@
       const highlightPersistence=!!window.SurwaveHighlightPersistence;
       const richPersistence=!!window.SurwaveRichPersistenceV18;
       const listPointerSort=!!window.SurwaveListPointerSortV19;
-      if(loaded&&gradients&&runtime&&persistence&&highlightPersistence&&richPersistence&&listPointerSort)return;
+      const inlineMedia=!!window.SurwaveInlineMediaV20;
+      if(loaded&&gradients&&runtime&&persistence&&highlightPersistence&&richPersistence&&listPointerSort&&inlineMedia)return;
       const toast=document.getElementById('toast');if(!toast)return;
-      toast.textContent='Ошибка: редактор загружен не полностью. Проверь editor-v16/v17/v18/v19 и перезапусти START_EDITOR.bat.';
+      toast.textContent='Ошибка: редактор загружен не полностью. Проверь editor-v16/v17/v18/v19/v20 и перезапусти START_EDITOR.bat.';
       toast.classList.add('visible');
-      console.error('Surwave editor module check:',{loaded,gradients,runtime,persistence,highlightPersistence,richPersistence,listPointerSort});
+      console.error('Surwave editor module check:',{loaded,gradients,runtime,persistence,highlightPersistence,richPersistence,listPointerSort,inlineMedia});
     },1500);
   </script>
 </body>
