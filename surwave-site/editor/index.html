@@ -123,6 +123,7 @@
   <script src="editor-v17-highlight-persistence.js?v=20260814-1408"></script>
   <script src="editor-v18-rich-persistence.js?v=20260814-1420"></script>
   <script src="editor-v20-inline-media.js?v=20260814-1420"></script>
+  <script src="editor-v22-block-pointer-sort.js?v=20260814-1515"></script>
   <script>
     setTimeout(() => {
       const core=window.SurwaveEditorCoreV2;
@@ -134,11 +135,12 @@
       const richPersistence=!!window.SurwaveRichPersistenceV18;
       const listPointerSort=!!window.SurwaveListPointerSortV19;
       const inlineMedia=!!window.SurwaveInlineMediaV20;
-      if(loaded&&gradients&&runtime&&persistence&&highlightPersistence&&richPersistence&&listPointerSort&&inlineMedia)return;
+      const blockPointerSort=!!window.SurwaveBlockPointerSortV22;
+      if(loaded&&gradients&&runtime&&persistence&&highlightPersistence&&richPersistence&&listPointerSort&&inlineMedia&&blockPointerSort)return;
       const toast=document.getElementById('toast');if(!toast)return;
-      toast.textContent='Ошибка: редактор загружен не полностью. Проверь editor-v16/v17/v18/v19/v20 и перезапусти START_EDITOR.bat.';
+      toast.textContent='Ошибка: редактор загружен не полностью. Проверь editor-v16/v17/v18/v19/v20/v22 и перезапусти START_EDITOR.bat.';
       toast.classList.add('visible');
-      console.error('Surwave editor module check:',{loaded,gradients,runtime,persistence,highlightPersistence,richPersistence,listPointerSort,inlineMedia});
+      console.error('Surwave editor module check:',{loaded,gradients,runtime,persistence,highlightPersistence,richPersistence,listPointerSort,inlineMedia,blockPointerSort});
     },1500);
   </script>
 </body>
