@@ -40,7 +40,19 @@
     ed.oninput=()=>{block[key]=ed.innerHTML;dirty()};wrap.append(bar,ed);return wrap;
   }
 
-  function addBar(host,array){host.innerHTML='';const w=document.createElement('div');w.className='add-bar';const s=select(Core.TYPES.filter(([t])=>t!=='raw'),'text',()=>{},'small-select');const b=document.createElement('button');b.className='btn';b.textContent='+ Добавить блок';b.onclick=()=>{array.push(Core.defaultBlock(s.value));dirty();renderAll()};w.append(s,b);host.appendChild(w)}
+  function blockTypeSelect(value='text',extra=''){
+    const s=document.createElement('select');s.className=`field small-select ${extra}`.trim();
+    for(const [v,l] of Core.TYPES.filter(([t])=>t!=='raw')){const o=document.createElement('option');o.value=v;o.textContent=l;s.appendChild(o)}
+    s.value=value;return s;
+  }
+  function insertionBar(array,index,extra=''){
+    const w=document.createElement('div');w.className=`add-bar block-insert-bar ${extra}`.trim();
+    const s=blockTypeSelect('text');
+    const b=document.createElement('button');b.type='button';b.className='btn';b.textContent='+ Добавить блок';
+    b.onclick=e=>{e.stopPropagation();const at=Math.max(0,Math.min(array.length,index));array.splice(at,0,Core.defaultBlock(s.value));dirty();renderAll()};
+    w.append(s,b);return w;
+  }
+  function addBar(host,array,index=0){host.innerHTML='';host.hidden=false;host.appendChild(insertionBar(array,index,'block-insert-top'))}
   function move(arr,i,d){const j=i+d;if(j<0||j>=arr.length)return;[arr[i],arr[j]]=[arr[j],arr[i]];dirty();renderAll()}
   function renderBlocks(container,array,base=''){
     container.innerHTML='';
@@ -48,10 +60,22 @@
       const head=document.createElement('div');head.className='block-head';const drag=document.createElement('span');drag.className='drag-handle';drag.textContent='⠿';const kind=document.createElement('span');kind.className='block-kind';kind.textContent=Core.TYPES.find(([t])=>t===block.type)?.[1]||block.type;const spacer=document.createElement('span');spacer.className='block-spacer';head.append(drag,kind,spacer,btn('↑','Выше',()=>move(array,i,-1)),btn('↓','Ниже',()=>move(array,i,1)),btn('⧉','Дублировать',()=>{array.splice(i+1,0,Core.clone(block));dirty();renderAll()}),btn('×','Удалить',()=>{array.splice(i,1);dirty();renderAll()},'remove'));card.appendChild(head);
       const body=document.createElement('div');body.className='block-body';renderBlock(body,block,path);card.appendChild(body);
       card.addEventListener('dragstart',()=>dragging={array,index:i});card.addEventListener('dragover',e=>{if(dragging?.array===array)e.preventDefault()});card.addEventListener('drop',e=>{if(dragging?.array!==array)return;e.preventDefault();const item=array.splice(dragging.index,1)[0];let target=i;if(dragging.index<i)target--;array.splice(target,0,item);dragging=null;dirty();renderAll()});
-      card.onclick=e=>{if(e.target.closest('button,input,textarea,select,.rich-editor'))return;highlightPreview(path)};container.appendChild(card);
+      card.onclick=e=>{if(e.target.closest('button,input,textarea,select,.rich-editor'))return;highlightPreview(path)};
+      container.appendChild(card);
+      container.appendChild(insertionBar(array,i+1,'block-insert-after'));
     });
   }
-  function nested(parent,title,children,base){const z=document.createElement('div');z.className='nested-zone';const h=document.createElement('div');h.className='nested-title';h.textContent=title;const add=document.createElement('button');add.className='btn';add.textContent='+ Блок';add.onclick=()=>{children.push(Core.defaultBlock('text'));dirty();renderAll()};h.appendChild(add);const list=document.createElement('div');list.className='blocks';z.append(h,list);renderBlocks(list,children,base);parent.appendChild(z)}
+  function nested(parent,title,children,base){
+    const z=document.createElement('div');z.className='nested-zone';
+    const h=document.createElement('div');h.className='nested-title';
+    const label=document.createElement('span');label.textContent=title;
+    const controls=document.createElement('div');controls.className='nested-insert-controls';
+    const type=blockTypeSelect('text','sw-nested-type');
+    const add=document.createElement('button');add.type='button';add.className='btn';add.textContent='+ Блок';
+    add.onclick=e=>{e.stopPropagation();children.splice(0,0,Core.defaultBlock(type.value));dirty();renderAll()};
+    controls.append(type,add);h.append(label,controls);
+    const list=document.createElement('div');list.className='blocks';z.append(h,list);renderBlocks(list,children,base);parent.appendChild(z)
+  }
 
   function mediaButton(target,key,label='Загрузить изображение'){const b=document.createElement('button');b.className='btn';b.textContent=label;b.onclick=()=>{pendingUpload={target,key};refs.picker.value='';refs.picker.click()};return b}
   function renderBlock(body,b,path){
@@ -73,7 +97,11 @@
     if(b.type==='raw'){body.append(document.createTextNode('Фрагмент пока не распознан. Его можно сохранить как есть.'),area(b.markdown,v=>b.markdown=v,'codearea'));return}
   }
 
-  function renderAll(){addBar($('mainAddBar'),state.blocks);addBar($('bottomAddBar'),state.blocks);renderBlocks(refs.blocks,state.blocks);schedulePreview()}
+  function renderAll(){
+    addBar($('mainAddBar'),state.blocks,0);
+    const bottom=$('bottomAddBar');if(bottom){bottom.innerHTML='';bottom.hidden=true}
+    renderBlocks(refs.blocks,state.blocks);schedulePreview()
+  }
   function schedulePreview(){clearTimeout(previewTimer);previewTimer=setTimeout(updatePreview,100)}
   function updatePreview(){const html=Core.renderBlocksHtml(state.blocks);refs.preview.srcdoc=`<!doctype html><html lang="ru"><head><meta charset="utf-8"><base href="${location.origin}/"><style>${Core.previewCss}</style></head><body><article class="article">${html}</article></body></html>`;refs.preview.onload=bindPreviewClicks}
   function bindPreviewClicks(){const doc=refs.preview.contentDocument;if(!doc)return;doc.querySelectorAll('[data-editor-path]').forEach(el=>{el.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();focusEditor(el.dataset.editorPath)});});}
