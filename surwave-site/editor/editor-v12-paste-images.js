@@ -86,9 +86,7 @@
   function insertInlineImage(source,editor,savedRange){
     if(!editor?.isConnected)return false;
     let range=savedRange;
-    if(!range?.startContainer?.isConnected||!range?.endContainer?.isConnected||!rangeInside(editor,range)){
-      range=captureRange(editor);
-    }
+    if(!range?.startContainer?.isConnected||!range?.endContainer?.isConnected||!rangeInside(editor,range))range=captureRange(editor);
     if(!range){range=document.createRange();range.selectNodeContents(editor);range.collapse(false)}
     try{
       range.deleteContents();
@@ -114,19 +112,14 @@
   }
   function nestedBase(zone){
     const cards=directCards(zone);
-    if(cards.length){
-      const path=cards[0].dataset.editorPath||'';
-      return path.replace(/\.\d+$/,'');
-    }
+    if(cards.length){const path=cards[0].dataset.editorPath||'';return path.replace(/\.\d+$/,'')}
     const owner=zone.closest('.block-card[data-editor-path]');
-    const ownerPath=owner?.dataset.editorPath||'';
-    if(!ownerPath)return'';
+    const ownerPath=owner?.dataset.editorPath||'';if(!ownerPath)return'';
     const step=zone.closest('.step-card');
     if(step){
       const body=owner.querySelector(':scope > .block-body');
       const steps=body?[...body.querySelectorAll(':scope > .step-card')]:[];
-      const index=steps.indexOf(step);
-      if(index>=0)return `${ownerPath}.steps.${index}.children`;
+      const index=steps.indexOf(step);if(index>=0)return `${ownerPath}.steps.${index}.children`;
     }
     return `${ownerPath}.children`;
   }
@@ -138,11 +131,8 @@
   }
   function commitSource(path,source){
     const card=document.querySelector(`.block-card[data-editor-path="${CSS.escape(path)}"]`);
-    const input=sourceField(card);
-    if(!input)return false;
-    input.value=source;
-    input.dispatchEvent(new Event('input',{bubbles:true}));
-    return true;
+    const input=sourceField(card);if(!input)return false;
+    input.value=source;input.dispatchEvent(new Event('input',{bubbles:true}));return true;
   }
 
   function insertNestedImage(source,zone){
@@ -150,12 +140,10 @@
     const add=[...title?.querySelectorAll('button')||[]].find(b=>/^\+\s*Блок/.test(b.textContent||''));
     const typeSelect=title?.querySelector('.sw-nested-type');
     if(!add||!typeSelect)return false;
-    const base=nestedBase(zone),index=directCards(zone).length;
-    if(!base)return false;
+    const base=nestedBase(zone);if(!base)return false;
     const previous=typeSelect.value;
-    typeSelect.value='image';
-    add.click();
-    const path=`${base}.${index}`;
+    typeSelect.value='image';add.click();
+    const path=`${base}.0`;
     const ok=commitSource(path,source);
     const freshZone=document.querySelector(`.block-card[data-editor-path="${CSS.escape(path)}"]`)?.closest('.nested-zone');
     const freshSelect=freshZone?.querySelector(':scope > .nested-title .sw-nested-type');
@@ -164,14 +152,13 @@
   }
 
   function insertTopLevelImage(source){
-    const root=document.getElementById('blocks');
-    const index=root?[...root.children].filter(el=>el.classList?.contains('block-card')).length:0;
-    const bar=document.getElementById('bottomAddBar')||document.getElementById('mainAddBar');
+    const bar=document.getElementById('mainAddBar');
     const select=bar?.querySelector('select'),button=bar?.querySelector('button');
     if(!select||!button)return false;
-    select.value='image';
-    button.click();
-    return commitSource(String(index),source);
+    const previous=select.value;select.value='image';button.click();
+    const ok=commitSource('0',source);
+    const fresh=document.getElementById('mainAddBar')?.querySelector('select');if(fresh)fresh.value=previous||'text';
+    return ok;
   }
 
   function insertImageBlock(source,target){
@@ -194,13 +181,10 @@
       const source=await uploadPng(file);
       if(richEditor){
         if(!insertInlineImage(source,richEditor,savedRange))throw new Error('PNG сохранён, но изображение не удалось вставить в текст');
-        markDirty();
-        notify('PNG сохранён в .gitbook/assets и вставлен в текст',3200);
-        return;
+        markDirty();notify('PNG сохранён в .gitbook/assets и вставлен в текст',3200);return;
       }
       if(!insertImageBlock(source,target))throw new Error('PNG сохранён, но блок изображения не удалось добавить в страницу');
-      markDirty();
-      notify('PNG сохранён в .gitbook/assets и вставлен как блок изображения',3200);
+      markDirty();notify('PNG сохранён в .gitbook/assets и вставлен как блок изображения',3200);
     }catch(error){notify('Ошибка вставки изображения: '+error.message,5000)}
   },true);
 })();
