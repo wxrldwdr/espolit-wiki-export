@@ -205,7 +205,7 @@ def move_group(group_title: str, direction: int) -> tuple[int, list[str]]:
 
     data = base.load_nav()
     groups = data.setdefault("groups", [])
-    index = next((i for i, group in enumerate(groups) if str(group.get("title") or "") == title), -1)
+    index = next((i for i, group in enumerate(groups) if str(group.get("title") or "").strip() == title), -1)
     if index < 0:
         raise ValueError("Раздел не найден")
 
@@ -235,7 +235,7 @@ def wrapper_html_fresh(title: str, source: str) -> str:
     html = _original_wrapper_html(title, source)
     return html.replace(
         "/surwave-site/assets/js/site-ui-runtime.js?v=20260812-1740",
-        "/surwave-site/assets/js/site-ui-runtime.js?v=20260814-2100",
+        "/surwave-site/assets/js/site-ui-runtime.js?v=20260814-2110",
     )
 
 
