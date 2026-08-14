@@ -49,4 +49,11 @@
 
   Core.previewCss+=`.sw-inline-arrow{background-image:url('/surwave-site/assets/icons/inline-arrow.svg')!important}`;
   window.SurwaveRichPersistenceV18={encodeValue,decodeValue};
+
+  if(!window.SurwaveListPointerSortV19){
+    const script=document.createElement('script');
+    script.src='editor-v19-list-pointer-sort.js?v=20260814-1408';
+    script.async=false;
+    document.head.appendChild(script);
+  }
 })();
