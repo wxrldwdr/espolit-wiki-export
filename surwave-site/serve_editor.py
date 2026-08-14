@@ -9,7 +9,7 @@ from urllib.parse import urlparse
 
 import serve_migrated as base
 
-EDITOR_API_VERSION = 3
+EDITOR_API_VERSION = 4
 
 
 def upsert_nav_preserve_groups(source: str, title: str, group_title: str) -> None:
@@ -96,6 +96,32 @@ def move_page(source: str, target_group: str, target_index: int) -> None:
     base.save_nav(data)
 
 
+def move_group(group_title: str, direction: int) -> int:
+    title = str(group_title or "").strip()
+    if not title:
+        raise ValueError("Не указан раздел")
+    try:
+        step = -1 if int(direction) < 0 else 1
+    except (TypeError, ValueError):
+        raise ValueError("Некорректное направление перемещения")
+
+    data = base.load_nav()
+    groups = data.setdefault("groups", [])
+    index = next((i for i, group in enumerate(groups) if str(group.get("title") or "") == title), -1)
+    if index < 0:
+        raise ValueError("Раздел не найден")
+
+    target = index + step
+    if target < 0 or target >= len(groups):
+        return index
+
+    # Меняем местами целые объекты разделов. Их items, archived и все другие
+    # метаданные остаются внутри раздела и перемещаются вместе с ним.
+    groups[index], groups[target] = groups[target], groups[index]
+    base.save_nav(data)
+    return target
+
+
 base.upsert_nav = upsert_nav_preserve_groups
 base.delete_nav = delete_nav_preserve_groups
 
@@ -114,7 +140,7 @@ base.wrapper_html = wrapper_html_fresh
 
 
 class EditorWikiHandler(base.WikiHandler):
-    server_version = "SurwaveWiki/2.1"
+    server_version = "SurwaveWiki/2.2"
 
     def copyfile(self, source, outputfile) -> None:
         try:
@@ -133,6 +159,7 @@ class EditorWikiHandler(base.WikiHandler):
                 "editorApi": EDITOR_API_VERSION,
                 "createGroup": True,
                 "movePage": True,
+                "moveGroup": True,
                 "pasteUpload": True,
             })
             return
@@ -140,7 +167,7 @@ class EditorWikiHandler(base.WikiHandler):
 
     def do_POST(self) -> None:
         parsed = urlparse(self.path)
-        if parsed.path not in {"/api/editor/create-group", "/api/editor/move-page"}:
+        if parsed.path not in {"/api/editor/create-group", "/api/editor/move-page", "/api/editor/move-group"}:
             return super().do_POST()
         try:
             data = self.read_json()
@@ -148,6 +175,11 @@ class EditorWikiHandler(base.WikiHandler):
                 title = str(data.get("title") or "")
                 create_group(title)
                 self.send_json({"ok": True, "title": title.strip()})
+                return
+            if parsed.path == "/api/editor/move-group":
+                title = str(data.get("group") or "")
+                index = move_group(title, data.get("direction", 1))
+                self.send_json({"ok": True, "group": title.strip(), "index": index})
                 return
             source = str(data.get("path") or "")
             target_group = str(data.get("group") or "")
