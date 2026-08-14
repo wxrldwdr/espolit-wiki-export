@@ -17,7 +17,7 @@
   <link rel="stylesheet" href="editor-v5-archive.css?v=20260812-2040">
   <link rel="stylesheet" href="editor-v6-block-tools.css?v=20260812-2132">
   <link rel="stylesheet" href="editor-v11-rich.css?v=20260813-0930">
-  <link rel="stylesheet" href="editor-v16-rich-tools.css?v=20260813-0945">
+  <link rel="stylesheet" href="editor-v16-rich-tools.css?v=20260814-1408">
 </head>
 <body>
   <header class="editor-topbar">
@@ -118,9 +118,9 @@
   <script src="editor-v5-archive.js?v=20260812-2040"></script>
   <script src="editor-v9-page-organizer.js?v=20260812-2345"></script>
   <script src="editor-v6-block-tools.js?v=20260812-2132"></script>
-  <script src="editor-v16-rich-tools.js?v=20260813-0930"></script>
-  <script src="editor-v17-highlight-persistence.js?v=20260813-0945"></script>
-  <script src="editor-v18-rich-persistence.js?v=20260813-0950"></script>
+  <script src="editor-v16-rich-tools.js?v=20260814-1408"></script>
+  <script src="editor-v17-highlight-persistence.js?v=20260814-1408"></script>
+  <script src="editor-v18-rich-persistence.js?v=20260814-1408"></script>
   <script>
     setTimeout(() => {
       const core=window.SurwaveEditorCoreV2;
@@ -128,11 +128,15 @@
       const gradients=!!window.SurwaveEnsureGradientStates;
       const runtime=!!window.SurwaveGradientRuntime;
       const persistence=!!window.SurwaveGradientPersistence;
-      if(loaded&&gradients&&runtime&&persistence)return;
+      const highlightPersistence=!!window.SurwaveHighlightPersistence;
+      const richPersistence=!!window.SurwaveRichPersistenceV18;
+      const listPointerSort=!!window.SurwaveListPointerSortV19;
+      if(loaded&&gradients&&runtime&&persistence&&highlightPersistence&&richPersistence&&listPointerSort)return;
       const toast=document.getElementById('toast');if(!toast)return;
-      toast.textContent='Ошибка: один из модулей IP-карточек/градиентов не загрузился. Перезапусти START_EDITOR.bat.';
-      toast.classList.add('visible');console.error('Surwave editor module check:',{loaded,gradients,runtime,persistence});
-    },700);
+      toast.textContent='Ошибка: редактор загружен не полностью. Проверь editor-v16/v17/v18/v19 и перезапусти START_EDITOR.bat.';
+      toast.classList.add('visible');
+      console.error('Surwave editor module check:',{loaded,gradients,runtime,persistence,highlightPersistence,richPersistence,listPointerSort});
+    },1500);
   </script>
 </body>
 </html>
