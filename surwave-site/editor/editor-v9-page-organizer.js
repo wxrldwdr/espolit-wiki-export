@@ -11,6 +11,7 @@
   let refreshQueued=false;
   let toastTimer=0;
   let capabilitiesPromise=null;
+  let groupBusy=false;
 
   function notify(text,ms=2200){
     if(!toast)return;
@@ -21,7 +22,7 @@
     const r=await fetch(url,{cache:'no-store',...options});
     let d={};try{d=await r.json()}catch(_){d={error:`HTTP ${r.status}`}}
     if(!r.ok){
-      if((r.status===404||d.error==='Неизвестный API-метод')&&/\/(create-group|move-page)$/.test(url)){
+      if((r.status===404||d.error==='Неизвестный API-метод')&&/\/(create-group|move-page|move-group)$/.test(url)){
         throw new Error('Запущен старый локальный сервер Wiki. Полностью закрой его и снова запусти START_EDITOR.bat.');
       }
       throw new Error(d.error||`HTTP ${r.status}`);
@@ -32,7 +33,9 @@
     if(!capabilitiesPromise){
       capabilitiesPromise=fetch('/api/editor/capabilities',{cache:'no-store'}).then(async r=>{
         let d={};try{d=await r.json()}catch(_){}
-        if(!r.ok||!d.createGroup||!d.movePage)throw new Error('Запущен старый локальный сервер Wiki. Полностью закрой его и снова запусти START_EDITOR.bat.');
+        if(!r.ok||!d.createGroup||!d.movePage||!d.moveGroup||Number(d.editorApi||0)<5){
+          throw new Error('Запущена старая версия локального сервера Wiki. Замени serve_editor.py и полностью перезапусти START_EDITOR.bat.');
+        }
         return d;
       }).catch(error=>{capabilitiesPromise=null;throw error});
     }
@@ -111,6 +114,35 @@
     }catch(e){notify('Ошибка перемещения: '+e.message,6000)}
   }
 
+  async function moveGroup(name,direction){
+    if(groupBusy)return;
+    const before=[...(inventory.groups||[])];
+    const oldIndex=before.indexOf(name);
+    const target=oldIndex+direction;
+    if(oldIndex<0||target<0||target>=before.length)return;
+    groupBusy=true;updateGroupButtons();
+    try{
+      await ensureOrganizerApi();
+      const result=await api('/api/editor/move-group',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({group:name,direction})
+      });
+      const expected=[...before];[expected[oldIndex],expected[target]]=[expected[target],expected[oldIndex]];
+      const saved=Array.isArray(result.groups)?result.groups:[];
+      if(saved.length&&saved.join('\u0000')!==expected.join('\u0000')){
+        throw new Error('Сервер вернул другой порядок разделов после сохранения');
+      }
+      await refresh(true);
+      if((inventory.groups||[]).join('\u0000')!==expected.join('\u0000')){
+        throw new Error('Проверка после записи не прошла: порядок разделов не сохранился на диске');
+      }
+      notify(`Раздел «${name}» перемещён ${direction<0?'выше':'ниже'} вместе со всеми страницами`);
+    }catch(e){
+      await refresh(true).catch(()=>{});
+      notify('Ошибка перемещения раздела: '+e.message,6500);
+    }finally{groupBusy=false;updateGroupButtons()}
+  }
+
   function bindPage(button){
     if(button.dataset.pageDragReady==='1')return;button.dataset.pageDragReady='1';button.draggable=true;
     button.addEventListener('dragstart',e=>{
@@ -132,21 +164,49 @@
     });
   }
 
-  function bindGroup(title){
-    if(title.dataset.groupDropReady==='1')return;title.dataset.groupDropReady='1';
-    title.addEventListener('dragover',e=>{if(!draggingPath)return;e.preventDefault();e.stopPropagation();clearDropMarks();title.classList.add('group-drop-target');e.dataTransfer.dropEffect='move'});
-    title.addEventListener('dragleave',()=>title.classList.remove('group-drop-target'));
-    title.addEventListener('drop',e=>{
-      if(!draggingPath)return;e.preventDefault();e.stopPropagation();const source=draggingPath,name=groupName(title);if(!name)return;
-      const index=(inventory.pages||[]).filter(p=>(p.group||'Без раздела')===name&&p.path!==source).length;
-      draggingPath='';clearDropMarks();movePage(source,name,index);
+  function groupOrderButton(symbol,title,direction,name){
+    const button=document.createElement('button');button.type='button';button.className='group-order-button';button.textContent=symbol;button.title=title;button.dataset.direction=String(direction);
+    button.addEventListener('pointerdown',e=>e.stopPropagation());
+    button.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();void moveGroup(name,direction)});
+    return button;
+  }
+
+  function updateGroupButtons(){
+    const groups=inventory.groups||[];
+    pageList.querySelectorAll('.page-group-title').forEach(title=>{
+      const name=groupName(title),index=groups.indexOf(name),controls=title.querySelector(':scope > .group-order-controls');if(!controls)return;
+      const up=controls.querySelector('[data-direction="-1"]'),down=controls.querySelector('[data-direction="1"]');
+      if(up)up.disabled=groupBusy||index<=0;
+      if(down)down.disabled=groupBusy||index<0||index>=groups.length-1;
     });
+  }
+
+  function bindGroup(title){
+    const name=groupName(title);if(!name)return;title.dataset.groupName=name;
+    if(title.dataset.groupDropReady!=='1'){
+      title.dataset.groupDropReady='1';
+      title.addEventListener('dragover',e=>{if(!draggingPath)return;e.preventDefault();e.stopPropagation();clearDropMarks();title.classList.add('group-drop-target');e.dataTransfer.dropEffect='move'});
+      title.addEventListener('dragleave',()=>title.classList.remove('group-drop-target'));
+      title.addEventListener('drop',e=>{
+        if(!draggingPath)return;e.preventDefault();e.stopPropagation();const source=draggingPath,current=groupName(title);if(!current)return;
+        const index=(inventory.pages||[]).filter(p=>(p.group||'Без раздела')===current&&p.path!==source).length;
+        draggingPath='';clearDropMarks();movePage(source,current,index);
+      });
+    }
+    let controls=title.querySelector(':scope > .group-order-controls');
+    if(!controls){
+      controls=document.createElement('span');controls.className='group-order-controls';
+      controls.append(groupOrderButton('↑','Переместить раздел выше',-1,name),groupOrderButton('↓','Переместить раздел ниже',1,name));
+      const rename=title.querySelector(':scope > .rename-group');
+      if(rename)title.insertBefore(controls,rename);else title.appendChild(controls);
+    }
   }
 
   function decorate(){
     ensureToolbar();ensureGroupTitles();
     pageList.querySelectorAll('.page-item').forEach(bindPage);
     pageList.querySelectorAll('.page-group-title').forEach(bindGroup);
+    updateGroupButtons();
   }
 
   async function refresh(reorder=false){
@@ -168,9 +228,16 @@
     .page-item-archive-row.page-drop-before,.page-item.page-drop-before{box-shadow:inset 0 2px 0 #00ffc0}
     .page-item-archive-row.page-drop-after,.page-item.page-drop-after{box-shadow:inset 0 -2px 0 #00ffc0}
     .page-group-title.group-drop-target{outline:1px solid rgba(0,255,192,.7);background:rgba(0,255,120,.08);border-radius:8px}
+    .page-group-title{display:flex;align-items:center;gap:3px;min-width:0}
+    .page-group-title>.group-order-controls{display:inline-flex;align-items:center;gap:1px;margin-left:auto}
+    .group-order-button{width:22px;height:22px;padding:0;border:1px solid transparent;border-radius:5px;background:transparent;color:#71867e;cursor:pointer;font:700 12px/1 system-ui}
+    .group-order-button:hover:not(:disabled){color:#00ffc0;border-color:rgba(0,255,192,.22);background:rgba(0,255,120,.06)}
+    .group-order-button:disabled{opacity:.22;cursor:default}
+    .page-group-title>.rename-group,.page-group-title>.group-archive-toggle{flex:0 0 auto}
   `;document.head.appendChild(style);
 
   const observer=new MutationObserver(queueRefresh);observer.observe(pageList,{childList:true,subtree:true});
   pageSearch?.addEventListener('input',()=>setTimeout(decorate,0));
   [0,150,400,900].forEach(ms=>setTimeout(()=>refresh(true),ms));
+  window.SurwavePageOrganizerV9=true;
 })();
