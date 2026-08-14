@@ -106,7 +106,7 @@ def wrapper_html_fresh(title: str, source: str) -> str:
     html = _original_wrapper_html(title, source)
     return html.replace(
         "/surwave-site/assets/js/site-ui-runtime.js?v=20260812-1740",
-        "/surwave-site/assets/js/site-ui-runtime.js?v=20260813-0955",
+        "/surwave-site/assets/js/site-ui-runtime.js?v=20260814-1420",
     )
 
 
