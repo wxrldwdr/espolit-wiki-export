@@ -114,7 +114,16 @@ base.wrapper_html = wrapper_html_fresh
 
 
 class EditorWikiHandler(base.WikiHandler):
-    server_version = "SurwaveWiki/2.0"
+    server_version = "SurwaveWiki/2.1"
+
+    def copyfile(self, source, outputfile) -> None:
+        try:
+            super().copyfile(source, outputfile)
+        except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
+            # Browser media elements routinely cancel an old MP4 request when
+            # seeking/reloading the preview. That is normal and must not spam
+            # the editor console with a traceback.
+            return
 
     def do_GET(self) -> None:
         parsed = urlparse(self.path)
