@@ -118,6 +118,7 @@
   <script src="editor-v3-workspace.js?v=20260812-2040"></script>
   <script src="editor-v5-archive.js?v=20260812-2040"></script>
   <script src="editor-v9-page-organizer.js?v=20260812-2345"></script>
+  <script src="editor-v23-group-order.js?v=20260814-1625"></script>
   <script src="editor-v6-block-tools.js?v=20260812-2132"></script>
   <script src="editor-v16-rich-tools.js?v=20260814-1408"></script>
   <script src="editor-v17-highlight-persistence.js?v=20260814-1408"></script>
@@ -136,11 +137,12 @@
       const listPointerSort=!!window.SurwaveListPointerSortV19;
       const inlineMedia=!!window.SurwaveInlineMediaV20;
       const blockPointerSort=!!window.SurwaveBlockPointerSortV22;
-      if(loaded&&gradients&&runtime&&persistence&&highlightPersistence&&richPersistence&&listPointerSort&&inlineMedia&&blockPointerSort)return;
+      const groupOrder=!!window.SurwaveGroupOrderV23;
+      if(loaded&&gradients&&runtime&&persistence&&highlightPersistence&&richPersistence&&listPointerSort&&inlineMedia&&blockPointerSort&&groupOrder)return;
       const toast=document.getElementById('toast');if(!toast)return;
-      toast.textContent='Ошибка: редактор загружен не полностью. Проверь editor-v16/v17/v18/v19/v20/v22 и перезапусти START_EDITOR.bat.';
+      toast.textContent='Ошибка: редактор загружен не полностью. Проверь editor-v16/v17/v18/v19/v20/v22/v23 и перезапусти START_EDITOR.bat.';
       toast.classList.add('visible');
-      console.error('Surwave editor module check:',{loaded,gradients,runtime,persistence,highlightPersistence,richPersistence,listPointerSort,inlineMedia,blockPointerSort});
+      console.error('Surwave editor module check:',{loaded,gradients,runtime,persistence,highlightPersistence,richPersistence,listPointerSort,inlineMedia,blockPointerSort,groupOrder});
     },1500);
   </script>
 </body>
