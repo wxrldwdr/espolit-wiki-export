@@ -9,7 +9,76 @@ from urllib.parse import urlparse
 
 import serve_migrated as base
 
-EDITOR_API_VERSION = 5
+EDITOR_API_VERSION = 6
+
+
+_raw_load_nav = base.load_nav
+
+
+def normalize_nav(data: dict) -> tuple[dict, bool]:
+    groups = data.setdefault("groups", [])
+    normalized: list[dict] = []
+    by_key: dict[str, dict] = {}
+    item_keys: dict[str, set[tuple[str, ...]]] = {}
+    changed = False
+
+    for raw_group in groups:
+        if not isinstance(raw_group, dict):
+            changed = True
+            continue
+
+        raw_title = str(raw_group.get("title") or "Разделы")
+        title = raw_title.strip() or "Разделы"
+        key = title.casefold()
+        if raw_title != title:
+            changed = True
+
+        target = by_key.get(key)
+        if target is None:
+            target = dict(raw_group)
+            target["title"] = title
+            target["items"] = []
+            normalized.append(target)
+            by_key[key] = target
+            item_keys[key] = set()
+        else:
+            # Одинаковые категории старых локальных сборок объединяются в
+            # один объект. Порядок и метаданные первой категории сохраняются.
+            changed = True
+
+        seen = item_keys[key]
+        for raw_item in raw_group.get("items", []) or []:
+            if not isinstance(raw_item, dict):
+                changed = True
+                continue
+            source = str(raw_item.get("source") or "").strip()
+            href = str(raw_item.get("href") or "").strip()
+            item_title = str(raw_item.get("title") or "").strip()
+            identity = ("source", source) if source else ("fallback", href, item_title)
+            if identity in seen:
+                changed = True
+                continue
+            seen.add(identity)
+            target.setdefault("items", []).append(dict(raw_item))
+
+    if len(normalized) != len(groups):
+        changed = True
+    data["groups"] = normalized
+    return data, changed
+
+
+def load_nav_normalized() -> dict:
+    data = _raw_load_nav()
+    data, changed = normalize_nav(data)
+    if changed:
+        # save_nav одновременно обновляет editor-data и публичный site-data.
+        base.save_nav(data)
+    return data
+
+
+# Все editor API и базовый /api/editor/pages читают одну и ту же уже
+# нормализованную модель навигации.
+base.load_nav = load_nav_normalized
 
 
 def upsert_nav_preserve_groups(source: str, title: str, group_title: str) -> None:
@@ -55,10 +124,39 @@ def create_group(title: str) -> None:
         raise ValueError("Название раздела не может быть пустым")
     data = base.load_nav()
     groups = data.setdefault("groups", [])
-    if any(str(group.get("title") or "").casefold() == title.casefold() for group in groups):
+    if any(str(group.get("title") or "").strip().casefold() == title.casefold() for group in groups):
         raise ValueError("Раздел с таким названием уже существует")
     groups.append({"title": title, "items": [], "archived": False})
     base.save_nav(data)
+
+
+def delete_group(group_title: str) -> list[str]:
+    title = str(group_title or "").strip()
+    if not title:
+        raise ValueError("Не указан раздел")
+
+    data = base.load_nav()
+    groups = data.setdefault("groups", [])
+    index = next(
+        (i for i, group in enumerate(groups) if str(group.get("title") or "").strip().casefold() == title.casefold()),
+        -1,
+    )
+    if index < 0:
+        raise ValueError("Раздел не найден")
+
+    items = list(groups[index].get("items", []) or [])
+    if items:
+        count = len(items)
+        raise ValueError(f"В разделе «{groups[index].get('title') or title}» {count} стр. Сначала перенеси или удали их.")
+
+    deleted_title = str(groups[index].get("title") or title)
+    groups.pop(index)
+    base.save_nav(data)
+
+    saved = group_order()
+    if any(name.casefold() == deleted_title.casefold() for name in saved):
+        raise OSError("Раздел не удалился из site-data-editor.json")
+    return saved
 
 
 def move_page(source: str, target_group: str, target_index: int) -> None:
@@ -123,13 +221,9 @@ def move_group(group_title: str, direction: int) -> tuple[int, list[str]]:
     expected = group_order(data)
     expected[index], expected[target] = expected[target], expected[index]
 
-    # Переставляем целые объекты разделов. Все страницы, archived и прочие
-    # метаданные остаются внутри соответствующего объекта категории.
     groups[index], groups[target] = groups[target], groups[index]
     base.save_nav(data)
 
-    # Повторно читаем файл после записи. Если порядок не пережил физическую
-    # запись в site-data-editor.json, не сообщаем редактору ложный успех.
     saved = group_order()
     if saved != expected:
         raise OSError("Порядок разделов не сохранился в site-data-editor.json")
@@ -154,7 +248,7 @@ base.wrapper_html = wrapper_html_fresh
 
 
 class EditorWikiHandler(base.WikiHandler):
-    server_version = "SurwaveWiki/2.3"
+    server_version = "SurwaveWiki/2.4"
 
     def copyfile(self, source, outputfile) -> None:
         try:
@@ -171,6 +265,8 @@ class EditorWikiHandler(base.WikiHandler):
                 "createGroup": True,
                 "movePage": True,
                 "moveGroup": True,
+                "deleteGroup": True,
+                "duplicateGroupCleanup": True,
                 "verifiedGroupPersistence": True,
                 "pasteUpload": True,
             })
@@ -179,7 +275,12 @@ class EditorWikiHandler(base.WikiHandler):
 
     def do_POST(self) -> None:
         parsed = urlparse(self.path)
-        if parsed.path not in {"/api/editor/create-group", "/api/editor/move-page", "/api/editor/move-group"}:
+        if parsed.path not in {
+            "/api/editor/create-group",
+            "/api/editor/move-page",
+            "/api/editor/move-group",
+            "/api/editor/delete-group",
+        }:
             return super().do_POST()
         try:
             data = self.read_json()
@@ -187,6 +288,11 @@ class EditorWikiHandler(base.WikiHandler):
                 title = str(data.get("title") or "")
                 create_group(title)
                 self.send_json({"ok": True, "title": title.strip(), "groups": group_order()})
+                return
+            if parsed.path == "/api/editor/delete-group":
+                title = str(data.get("group") or "")
+                groups = delete_group(title)
+                self.send_json({"ok": True, "group": title.strip(), "groups": groups})
                 return
             if parsed.path == "/api/editor/move-group":
                 title = str(data.get("group") or "")
@@ -204,6 +310,8 @@ class EditorWikiHandler(base.WikiHandler):
 
 def main() -> None:
     os.chdir(base.ROOT)
+    # Первый load уже объединит старые категории-дубли и физически сохранит
+    # очищенную editor/public навигацию до открытия браузера.
     base.save_nav(base.load_nav())
     base.save_settings(base.load_settings())
     base.regenerate_wrappers()
