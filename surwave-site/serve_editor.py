@@ -42,8 +42,6 @@ def normalize_nav(data: dict) -> tuple[dict, bool]:
             by_key[key] = target
             item_keys[key] = set()
         else:
-            # Одинаковые категории старых локальных сборок объединяются в
-            # один объект. Порядок и метаданные первой категории сохраняются.
             changed = True
 
         seen = item_keys[key]
@@ -71,13 +69,10 @@ def load_nav_normalized() -> dict:
     data = _raw_load_nav()
     data, changed = normalize_nav(data)
     if changed:
-        # save_nav одновременно обновляет editor-data и публичный site-data.
         base.save_nav(data)
     return data
 
 
-# Все editor API и базовый /api/editor/pages читают одну и ту же уже
-# нормализованную модель навигации.
 base.load_nav = load_nav_normalized
 
 
@@ -240,7 +235,7 @@ def wrapper_html_fresh(title: str, source: str) -> str:
     html = _original_wrapper_html(title, source)
     return html.replace(
         "/surwave-site/assets/js/site-ui-runtime.js?v=20260812-1740",
-        "/surwave-site/assets/js/site-ui-runtime.js?v=20260814-1420",
+        "/surwave-site/assets/js/site-ui-runtime.js?v=20260814-2010",
     )
 
 
@@ -310,8 +305,6 @@ class EditorWikiHandler(base.WikiHandler):
 
 def main() -> None:
     os.chdir(base.ROOT)
-    # Первый load уже объединит старые категории-дубли и физически сохранит
-    # очищенную editor/public навигацию до открытия браузера.
     base.save_nav(base.load_nav())
     base.save_settings(base.load_settings())
     base.regenerate_wrappers()
