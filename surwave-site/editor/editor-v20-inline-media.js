@@ -81,9 +81,14 @@
     button.className='sw-inline-arrow-button';
     button.title='Вставить визуальную стрелку';
     button.innerHTML=`<img class="sw-arrow-tool-icon" src="${ARROW_SRC}" width="24" height="16" alt="" draggable="false">`;
-    button.addEventListener('pointerdown',event=>{remember(editor);event.preventDefault();event.stopPropagation()});
-    button.addEventListener('mousedown',event=>{remember(editor);event.preventDefault();event.stopPropagation()});
-    button.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();insertArrow(editor)});
+    button.addEventListener('pointerdown',event=>{
+      if(event.button!=null&&event.button!==0)return;
+      remember(editor);
+      event.preventDefault();event.stopPropagation();
+      insertArrow(editor);
+    });
+    button.addEventListener('mousedown',event=>{event.preventDefault();event.stopPropagation()});
+    button.addEventListener('click',event=>{event.preventDefault();event.stopPropagation()});
     return button;
   }
   function decorateToolbar(toolbar){
