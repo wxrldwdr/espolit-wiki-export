@@ -13,18 +13,14 @@
     return refs.get(card?.dataset?.editorPath||'')||null;
   }
 
-  function currentCard(block){
-    for(const card of document.querySelectorAll('.block-card[data-editor-path]')){
-      if(blockFor(card)===block)return card;
-    }
-    return null;
+  function splitPath(path){
+    const value=String(path||'');
+    const match=value.match(/^(.*?)(?:\.)?(\d+)$/);
+    if(!match)return{base:'',index:0};
+    return{base:match[1].replace(/\.$/,''),index:+match[2]||0};
   }
 
-  function currentIndex(block){
-    const card=currentCard(block);if(!card)return null;
-    const cards=directCards(card.parentElement),index=cards.indexOf(card);
-    return index<0?null:{card,container:card.parentElement,cards,index};
-  }
+  function pathAt(base,index){return base?`${base}.${index}`:`${index}`}
 
   function clearTargets(container){
     directCards(container).forEach(card=>card.classList.remove('sw-block-pointer-source','sw-block-drop-before','sw-block-drop-after'));
@@ -69,17 +65,19 @@
     return ghost;
   }
 
-  async function moveActualBlock(block,target){
-    for(let guard=0;guard<200;guard++){
-      const info=currentIndex(block);if(!info)return false;
-      if(info.index===target)return true;
-      const title=info.index<target?'Ниже':'Выше';
-      const button=[...info.card.querySelectorAll(':scope > .block-head > button')].find(btn=>btn.title===title);
+  async function moveActualBlock(base,from,target){
+    let index=from;
+    for(let guard=0;guard<200&&index!==target;guard++){
+      const card=document.querySelector(`.block-card[data-editor-path="${CSS.escape(pathAt(base,index))}"]`);
+      if(!card)return false;
+      const title=index<target?'Ниже':'Выше';
+      const button=[...card.querySelectorAll(':scope > .block-head > button')].find(btn=>btn.title===title);
       if(!button)return false;
       button.click();
-      await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+      index+=index<target?1:-1;
+      await new Promise(resolve=>requestAnimationFrame(resolve));
     }
-    return false;
+    return index===target;
   }
 
   function stop(cancel=false){
@@ -90,24 +88,26 @@
     active.ghost?.remove();
     try{active.handle.releasePointerCapture(active.pointerId)}catch(_){}
     if(cancel||!active.moved)return;
-    void moveActualBlock(active.block,active.target);
+    void moveActualBlock(active.base,active.from,active.target);
   }
 
   function begin(event,card,handle){
     if(event.button!=null&&event.button!==0)return;
-    const block=blockFor(card);if(!block)return;
+    if(!blockFor(card))return;
     const container=card.parentElement,cards=directCards(container);
     if(cards.length<2)return;
     event.preventDefault();event.stopPropagation();
     if(session)stop(true);
     const rect=card.getBoundingClientRect(),ghost=makeGhost(card);
+    const path=splitPath(card.dataset.editorPath||'');
+    const from=cards.indexOf(card);
     ghost.style.left=`${Math.max(8,rect.left+12)}px`;
     ghost.style.top=`${Math.max(8,rect.top+6)}px`;
     ghost.style.width=`${Math.max(120,Math.min(360,rect.width-24))}px`;
     ghost.style.visibility='hidden';
     card.classList.add('sw-block-pointer-source');
     document.documentElement.classList.add('sw-block-pointer-sorting');
-    session={pointerId:event.pointerId,block,card,container,handle,ghost,startX:event.clientX,startY:event.clientY,target:cards.indexOf(card),moved:false};
+    session={pointerId:event.pointerId,card,container,handle,ghost,base:path.base,from,startX:event.clientX,startY:event.clientY,target:from,moved:false};
     try{handle.setPointerCapture(event.pointerId)}catch(_){}
   }
 
