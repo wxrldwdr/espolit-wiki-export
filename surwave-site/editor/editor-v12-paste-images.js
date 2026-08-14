@@ -65,6 +65,49 @@
     return result.source;
   }
 
+  function rangeInside(editor,range){
+    if(!editor||!range)return false;
+    const node=range.commonAncestorContainer;
+    const el=node?.nodeType===Node.ELEMENT_NODE?node:node?.parentElement;
+    return node===editor||!!(el&&editor.contains(el));
+  }
+  function captureRange(editor){
+    const sel=window.getSelection();if(!sel?.rangeCount)return null;
+    const range=sel.getRangeAt(0);if(!rangeInside(editor,range))return null;
+    try{return range.cloneRange()}catch(_){return null}
+  }
+  function displaySource(source){
+    source=String(source||'').trim();
+    if(typeof Core.mediaUrl==='function')return Core.mediaUrl(source);
+    if(/^https?:|^data:|^\//i.test(source))return source;
+    if(source.includes('.gitbook/assets/'))return'/.gitbook/assets/'+encodeURIComponent(source.split('.gitbook/assets/').pop().split('/').pop());
+    return'/'+source.replace(/^\.\//,'');
+  }
+  function insertInlineImage(source,editor,savedRange){
+    if(!editor?.isConnected)return false;
+    let range=savedRange;
+    if(!range?.startContainer?.isConnected||!range?.endContainer?.isConnected||!rangeInside(editor,range)){
+      range=captureRange(editor);
+    }
+    if(!range){range=document.createRange();range.selectNodeContents(editor);range.collapse(false)}
+    try{
+      range.deleteContents();
+      const img=document.createElement('img');
+      img.className='sw-inline-pasted-image';
+      img.dataset.swInlineImage='1';
+      img.dataset.swSource=source;
+      img.src=displaySource(source);
+      img.alt='';img.draggable=false;img.contentEditable='false';
+      range.insertNode(img);
+      const spacer=document.createTextNode('\u200B');img.after(spacer);
+      range.setStartAfter(spacer);range.collapse(true);
+      editor.focus({preventScroll:true});
+      const sel=window.getSelection();sel.removeAllRanges();sel.addRange(range);
+      editor.dispatchEvent(new InputEvent('input',{bubbles:true,inputType:'insertFromPaste',data:null}));
+      return true;
+    }catch(error){console.warn('Surwave inline paste failed',error);return false}
+  }
+
   function directCards(zone){
     const list=zone?.querySelector(':scope > .blocks');
     return list?[...list.children].filter(el=>el.classList?.contains('block-card')):[];
@@ -142,11 +185,19 @@
     const imageItem=items.find(item=>item.kind==='file'&&/^image\//i.test(item.type||''));
     if(!imageItem)return;
     const file=imageItem.getAsFile();if(!file)return;
-    event.preventDefault();event.stopPropagation();
     const target=event.target;
+    const richEditor=target?.closest?.('.rich-editor')||null;
+    const savedRange=richEditor?captureRange(richEditor):null;
+    event.preventDefault();event.stopPropagation();
     try{
       notify('Загружаю изображение из буфера обмена…',5000);
       const source=await uploadPng(file);
+      if(richEditor){
+        if(!insertInlineImage(source,richEditor,savedRange))throw new Error('PNG сохранён, но изображение не удалось вставить в текст');
+        markDirty();
+        notify('PNG сохранён в .gitbook/assets и вставлен в текст',3200);
+        return;
+      }
       if(!insertImageBlock(source,target))throw new Error('PNG сохранён, но блок изображения не удалось добавить в страницу');
       markDirty();
       notify('PNG сохранён в .gitbook/assets и вставлен как блок изображения',3200);
