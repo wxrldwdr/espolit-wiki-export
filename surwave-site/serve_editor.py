@@ -9,7 +9,7 @@ from urllib.parse import urlparse
 
 import serve_migrated as base
 
-EDITOR_API_VERSION = 4
+EDITOR_API_VERSION = 5
 
 
 def upsert_nav_preserve_groups(source: str, title: str, group_title: str) -> None:
@@ -96,7 +96,12 @@ def move_page(source: str, target_group: str, target_index: int) -> None:
     base.save_nav(data)
 
 
-def move_group(group_title: str, direction: int) -> int:
+def group_order(data: dict | None = None) -> list[str]:
+    nav = data if data is not None else base.load_nav()
+    return [str(group.get("title") or "Разделы") for group in nav.get("groups", [])]
+
+
+def move_group(group_title: str, direction: int) -> tuple[int, list[str]]:
     title = str(group_title or "").strip()
     if not title:
         raise ValueError("Не указан раздел")
@@ -113,13 +118,22 @@ def move_group(group_title: str, direction: int) -> int:
 
     target = index + step
     if target < 0 or target >= len(groups):
-        return index
+        return index, group_order(data)
 
-    # Меняем местами целые объекты разделов. Их items, archived и все другие
-    # метаданные остаются внутри раздела и перемещаются вместе с ним.
+    expected = group_order(data)
+    expected[index], expected[target] = expected[target], expected[index]
+
+    # Переставляем целые объекты разделов. Все страницы, archived и прочие
+    # метаданные остаются внутри соответствующего объекта категории.
     groups[index], groups[target] = groups[target], groups[index]
     base.save_nav(data)
-    return target
+
+    # Повторно читаем файл после записи. Если порядок не пережил физическую
+    # запись в site-data-editor.json, не сообщаем редактору ложный успех.
+    saved = group_order()
+    if saved != expected:
+        raise OSError("Порядок разделов не сохранился в site-data-editor.json")
+    return target, saved
 
 
 base.upsert_nav = upsert_nav_preserve_groups
@@ -140,15 +154,12 @@ base.wrapper_html = wrapper_html_fresh
 
 
 class EditorWikiHandler(base.WikiHandler):
-    server_version = "SurwaveWiki/2.2"
+    server_version = "SurwaveWiki/2.3"
 
     def copyfile(self, source, outputfile) -> None:
         try:
             super().copyfile(source, outputfile)
         except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
-            # Browser media elements routinely cancel an old MP4 request when
-            # seeking/reloading the preview. That is normal and must not spam
-            # the editor console with a traceback.
             return
 
     def do_GET(self) -> None:
@@ -160,6 +171,7 @@ class EditorWikiHandler(base.WikiHandler):
                 "createGroup": True,
                 "movePage": True,
                 "moveGroup": True,
+                "verifiedGroupPersistence": True,
                 "pasteUpload": True,
             })
             return
@@ -174,18 +186,18 @@ class EditorWikiHandler(base.WikiHandler):
             if parsed.path == "/api/editor/create-group":
                 title = str(data.get("title") or "")
                 create_group(title)
-                self.send_json({"ok": True, "title": title.strip()})
+                self.send_json({"ok": True, "title": title.strip(), "groups": group_order()})
                 return
             if parsed.path == "/api/editor/move-group":
                 title = str(data.get("group") or "")
-                index = move_group(title, data.get("direction", 1))
-                self.send_json({"ok": True, "group": title.strip(), "index": index})
+                index, groups = move_group(title, data.get("direction", 1))
+                self.send_json({"ok": True, "group": title.strip(), "index": index, "groups": groups})
                 return
             source = str(data.get("path") or "")
             target_group = str(data.get("group") or "")
             target_index = data.get("index", 0)
             move_page(source, target_group, target_index)
-            self.send_json({"ok": True})
+            self.send_json({"ok": True, "groups": group_order()})
         except (ValueError, OSError) as exc:
             self.send_json({"error": str(exc)}, 400)
 
